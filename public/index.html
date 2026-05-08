@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Shopping</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+
+<!-- Standalone iOS app metadata so Add-to-Home-Screen looks native. -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Shopping">
+<meta name="theme-color" content="#26a69a">
+
+<!-- iOS only renders PNG/JPG for apple-touch-icon. -->
+<link rel="apple-touch-icon" sizes="180x180" href="/icon.png">
+<link rel="icon" type="image/svg+xml" href="/icon.svg">
+
+<style>
+:root {
+  --teal: #26a69a;
+  --teal-dark: #00867d;
+  --teal-light: #e0f2f1;
+  --bg: #f5f9f9;
+  --card: #ffffff;
+  --text: #2d3a3a;
+  --muted: #6b7878;
+  --border: #d8e3e3;
+  --danger: #d32f2f;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  -webkit-tap-highlight-color: transparent;
+  overflow-x: hidden;
+}
+.app {
+  max-width: 600px;
+  margin: 0 auto;
+  padding: 0 16px max(16px, env(safe-area-inset-bottom));
+}
+header {
+  position: sticky;
+  top: 0;
+  background: var(--teal);
+  color: white;
+  margin: 0 -16px;
+  padding: env(safe-area-inset-top) 16px 12px;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+header h1 {
+  font-size: 22px;
+  font-weight: 600;
+  margin: 0;
+  padding-top: 12px;
+}
+.refresh-btn {
+  background: rgba(255,255,255,0.2);
+  border: none;
+  color: white;
+  width: 36px; height: 36px;
+  border-radius: 50%;
+  font-size: 20px;
+  margin-top: 8px;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  font-family: inherit;
+  -webkit-appearance: none;
+  appearance: none;
+}
+.refresh-btn:active { background: rgba(255,255,255,0.35); }
+.refresh-btn.spin { animation: spin 0.8s linear; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.add-card {
+  background: var(--card);
+  border-radius: 12px;
+  padding: 12px;
+  margin: 16px 0;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+  display: flex; gap: 8px;
+}
+.add-card input {
+  flex: 1;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px;
+  font-size: 16px;
+  font-family: inherit;
+  outline: none;
+  background: var(--card);
+  color: var(--text);
+  min-width: 0;
+}
+.add-card input:focus { border-color: var(--teal); }
+.add-card button {
+  background: var(--teal);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 0 20px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  min-width: 64px;
+  font-family: inherit;
+  -webkit-appearance: none;
+  appearance: none;
+}
+.add-card button:active { background: var(--teal-dark); }
+.add-card button:disabled { opacity: 0.5; }
+
+.category {
+  background: var(--card);
+  border-radius: 12px;
+  margin: 12px 0;
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+}
+.category h2 {
+  font-size: 15px;
+  font-weight: 700;
+  margin: 0;
+  padding: 14px 16px 10px;
+  color: var(--teal-dark);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.category h2 .count {
+  margin-left: auto;
+  color: var(--muted);
+  font-weight: 500;
+  font-size: 13px;
+  letter-spacing: 0;
+}
+.item {
+  padding: 14px 16px;
+  border-top: 1px solid var(--border);
+  font-size: 16px;
+  display: flex; align-items: center; gap: 14px;
+  cursor: pointer;
+  user-select: none;
+  -webkit-user-select: none;
+  min-height: 52px;
+}
+.item:active { background: var(--teal-light); }
+.item .check {
+  width: 24px; height: 24px;
+  border: 2px solid var(--border);
+  border-radius: 50%;
+  flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 14px;
+  color: white;
+  font-weight: bold;
+  transition: background 0.15s, border-color 0.15s;
+}
+.item.checking .check {
+  background: var(--teal);
+  border-color: var(--teal);
+}
+.item.checking { opacity: 0.45; }
+.item.checking .summary { text-decoration: line-through; }
+.summary {
+  flex: 1;
+  overflow-wrap: break-word;
+  word-break: break-word;
+}
+
+.empty-state {
+  text-align: center;
+  color: var(--muted);
+  padding: 48px 16px 32px;
+  font-size: 15px;
+}
+.empty-state .big { font-size: 36px; margin-bottom: 8px; }
+
+.toast {
+  position: fixed;
+  bottom: max(20px, env(safe-area-inset-bottom));
+  left: 50%;
+  transform: translateX(-50%) translateY(8px);
+  background: rgba(45,58,58,0.95);
+  color: white;
+  padding: 12px 22px;
+  border-radius: 24px;
+  font-size: 14px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s, transform 0.2s;
+  z-index: 100;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.2);
+}
+.toast.show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+.toast.error { background: var(--danger); }
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0f1819;
+    --card: #1a2425;
+    --text: #e8f0f0;
+    --muted: #95a3a3;
+    --border: #2c3a3a;
+    --teal-light: #173030;
+  }
+  .add-card, .category { box-shadow: 0 1px 3px rgba(0,0,0,0.4); }
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <h1>Shopping</h1>
+    <button class="refresh-btn" id="refresh-btn" aria-label="Refresh">⟳</button>
+  </header>
+
+  <div class="add-card">
+    <input type="text" id="add-input"
+           placeholder="Add item — comma or new line for multiple"
+           autocomplete="off" autocorrect="off" autocapitalize="sentences"
+           enterkeyhint="done">
+    <button id="add-btn">Add</button>
+  </div>
+
+  <div id="categories"></div>
+
+  <div class="empty-state" id="empty-state" hidden>
+    <div class="big">🛒</div>
+    Nothing to buy. Add items above.
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+(() => {
+  // Mirrors ha-shopping/scripts/push_shopping.py CATEGORIES — must stay in
+  // sync with the HA-side routing automation's keyword map order.
+  const CATEGORIES = [
+    ['todo.shopping_produce',       'Produce',         '🥬'],
+    ['todo.shopping_bakery',        'Bakery',          '🍞'],
+    ['todo.shopping_dairy',         'Dairy',           '🧀'],
+    ['todo.shopping_meat_seafood',  'Meat & Seafood',  '🥩'],
+    ['todo.shopping_pantry',        'Pantry',          '🥫'],
+    ['todo.shopping_frozen',        'Frozen',          '❄️'],
+    ['todo.shopping_beverages',     'Beverages',       '🥤'],
+    ['todo.shopping_household',     'Household',       '🧻'],
+    ['todo.shopping_other',         'Other',           '❓'],
+  ];
+  const POLL_MS = 3000;
+  // After adding/checking, poll once shortly to reflect the routing
+  // automation's effect (~100ms typical) without waiting for next tick.
+  const QUICK_POLL_MS = 500;
+
+  const $ = (id) => document.getElementById(id);
+  const categoriesEl = $('categories');
+  const emptyStateEl = $('empty-state');
+  const inputEl = $('add-input');
+  const addBtn = $('add-btn');
+  const refreshBtn = $('refresh-btn');
+  const toastEl = $('toast');
+
+  let pollTimer = null;
+  let lastSnapshot = {};
+  const inflight = new Set(); // item uids currently being checked off
+
+  function showToast(msg, isError) {
+    toastEl.textContent = msg;
+    toastEl.classList.toggle('error', !!isError);
+    toastEl.classList.add('show');
+    clearTimeout(showToast._t);
+    showToast._t = setTimeout(() => toastEl.classList.remove('show'), 2400);
+  }
+
+  async function callApi(path, opts) {
+    const r = await fetch(path, opts || {});
+    if (!r.ok) {
+      const text = await r.text().catch(() => '');
+      throw new Error(`${r.status} ${text.slice(0, 100)}`);
+    }
+    return r.json().catch(() => null);
+  }
+
+  async function fetchAllItems() {
+    // POST /api/services/todo/get_items per category in parallel.
+    // status=needs_action filter is server-side so completed items don't
+    // ride the wire.
+    const pairs = await Promise.all(
+      CATEGORIES.map(async ([entityId]) => {
+        try {
+          const r = await callApi(
+            '/api/services/todo/get_items?return_response=true',
+            {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                entity_id: entityId,
+                status: 'needs_action',
+              }),
+            },
+          );
+          const items = r && r.service_response &&
+                        r.service_response[entityId] &&
+                        r.service_response[entityId].items || [];
+          return [entityId, items];
+        } catch (e) {
+          console.warn(`fetch ${entityId} failed`, e);
+          return [entityId, lastSnapshot[entityId] || []];
+        }
+      }),
+    );
+    return Object.fromEntries(pairs);
+  }
+
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, (c) => (
+      { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]
+    ));
+  }
+
+  function render(snapshot) {
+    let total = 0;
+    const html = CATEGORIES.map(([entityId, name, emoji]) => {
+      const items = (snapshot[entityId] || []);
+      if (!items.length) return '';
+      total += items.length;
+      const itemsHtml = items.map((i) => {
+        const checking = inflight.has(i.uid);
+        return `<div class="item ${checking ? 'checking' : ''}"
+          data-entity="${entityId}" data-uid="${escapeHtml(i.uid)}">
+          <span class="check">${checking ? '✓' : ''}</span>
+          <span class="summary">${escapeHtml(i.summary)}</span>
+        </div>`;
+      }).join('');
+      return `<section class="category">
+        <h2><span>${emoji}</span><span>${name}</span><span class="count">${items.length}</span></h2>
+        ${itemsHtml}
+      </section>`;
+    }).join('');
+    categoriesEl.innerHTML = html;
+    emptyStateEl.hidden = total > 0;
+    lastSnapshot = snapshot;
+  }
+
+  let refreshing = false;
+  async function refresh(spin) {
+    if (refreshing) return;
+    refreshing = true;
+    if (spin) refreshBtn.classList.add('spin');
+    try {
+      const snapshot = await fetchAllItems();
+      render(snapshot);
+    } catch (e) {
+      console.error(e);
+      showToast('Failed to refresh', true);
+    } finally {
+      refreshing = false;
+      setTimeout(() => refreshBtn.classList.remove('spin'), 800);
+    }
+  }
+
+  async function addItem() {
+    const text = inputEl.value.trim();
+    if (!text) return;
+    inputEl.value = '';
+    addBtn.disabled = true;
+    try {
+      await callApi('/api/services/todo/add_item', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          entity_id: 'todo.shopping_list',
+          item: text,
+        }),
+      });
+      // Routing automation moves it to a category list within ~100ms.
+      // Quick poll to pick up the change, then a backup poll in case
+      // routing was momentarily slow.
+      setTimeout(refresh, QUICK_POLL_MS);
+      setTimeout(refresh, QUICK_POLL_MS * 4);
+    } catch (e) {
+      console.error(e);
+      showToast('Failed to add', true);
+      inputEl.value = text;
+    } finally {
+      addBtn.disabled = false;
+    }
+  }
+
+  async function checkOff(entityId, uid) {
+    if (inflight.has(uid)) return;
+    inflight.add(uid);
+    document.querySelectorAll(`.item[data-uid="${CSS.escape(uid)}"]`)
+      .forEach((el) => el.classList.add('checking'));
+    try {
+      await callApi('/api/services/todo/update_item', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          entity_id: entityId,
+          item: uid,
+          status: 'completed',
+        }),
+      });
+      // Brief delay so user sees the checked state, then refresh.
+      setTimeout(() => { inflight.delete(uid); refresh(); }, 300);
+    } catch (e) {
+      console.error(e);
+      inflight.delete(uid);
+      document.querySelectorAll(`.item[data-uid="${CSS.escape(uid)}"]`)
+        .forEach((el) => el.classList.remove('checking'));
+      showToast('Failed to check off', true);
+    }
+  }
+
+  // Wire up.
+  addBtn.addEventListener('click', addItem);
+  inputEl.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); addItem(); }
+  });
+  refreshBtn.addEventListener('click', () => refresh(true));
+  categoriesEl.addEventListener('click', (e) => {
+    const item = e.target.closest('.item');
+    if (item && !item.classList.contains('checking')) {
+      checkOff(item.dataset.entity, item.dataset.uid);
+    }
+  });
+
+  // Polling: only when document is visible. Saves battery + Vercel quota.
+  function startPolling() {
+    if (pollTimer) return;
+    pollTimer = setInterval(refresh, POLL_MS);
+  }
+  function stopPolling() {
+    if (!pollTimer) return;
+    clearInterval(pollTimer);
+    pollTimer = null;
+  }
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) stopPolling();
+    else { refresh(); startPolling(); }
+  });
+
+  // Boot.
+  refresh().then(startPolling);
+})();
+</script>
+</body>
+</html>
