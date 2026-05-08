@@ -1,31 +1,84 @@
-// Edge function: transparent proxy to Home Assistant with token injection.
+// Edge function: path-scoped API gateway to Home Assistant.
 //
-// Every incoming request is forwarded to the HA Nabu Casa URL, with an
-// Authorization: Bearer <HA_TOKEN> header injected so the user (anyone
-// with the proxy URL) is silently logged in as the dedicated kiosk HA
-// user. The kiosk user's HA-side permissions are what scope what's
-// reachable — the proxy itself is intentionally transparent.
+// Phase 2 of ha-shopping-proxy. Replaces the Phase 1 transparent proxy
+// (which couldn't auth HA's SPA — see PLAN.md / project memories).
 //
-// Deploy notes:
-//   - Vercel project env vars (Production scope):
-//       HA_URL    = https://wooaeilbttvus6etixtt2izabobprcoj.ui.nabu.casa
-//       HA_TOKEN  = <long-lived access token for the kiosk HA user>
-//   - vercel.json rewrites '/(.*)' to '/api/proxy', so this single function
-//     handles every path. The original path is preserved on `request.url`.
+// This gateway only allows the specific HA REST endpoints the custom
+// kiosk UI needs, and only for entity_ids matching todo.shopping_*.
+// Every allowed request is forwarded to the Nabu Casa URL with
+// Authorization: Bearer <HA_TOKEN> injected. Everything else → 404.
 //
-// Known limitations:
-//   - WebSockets (HA's /api/websocket) do NOT proxy through Vercel Edge
-//     Functions. The frontend will show "connection lost" but the dashboard
-//     still renders via REST. Live updates require manual refresh until we
-//     migrate to a host that supports WS proxying (e.g. Cloudflare Workers).
-//   - Set-Cookie headers from HA are stripped — we don't want HA session
-//     cookies on the proxy domain (we're using bearer-token injection
-//     instead). If HA's frontend tries to set CSRF/session cookies, they
-//     won't persist; we re-inject the token on every request.
+// Required env vars (set in Vercel project settings, Production scope):
+//   HA_URL    = https://wooaeilbttvus6etixtt2izabobprcoj.ui.nabu.casa
+//   HA_TOKEN  = long-lived access token, ideally for the dedicated
+//               kiosk HA user (non-admin, scoped to shopping lists)
+//
+// Allowlist:
+//   GET  /api/states/todo.shopping_<cat>           — read one list's state
+//   POST /api/services/todo/get_items              — fetch items in a list
+//   POST /api/services/todo/add_item               — add to a list
+//   POST /api/services/todo/update_item            — check/uncheck/edit
+//   POST /api/services/todo/remove_item            — delete an item
+//   POST /api/services/todo/remove_completed_items — clear all completed
+//
+// Body validation: every POST body must JSON-parse to an object whose
+// `entity_id` (root key) is a string matching ^todo\.shopping_[a-z_]+$.
+// Arrays of entity_ids and the target/data shape are rejected — the
+// custom UI only uses the simple form.
+//
+// vercel.json rewrites /api/(.*) → /api/proxy so this single function
+// handles every /api/* path; static files in public/ are served as-is
+// for everything else (no rewrite catches them).
 
 export const config = {
   runtime: 'edge',
 };
+
+const ENTITY_RE = /^todo\.shopping_[a-z_]+$/;
+
+const STATE_PATH_RE = /^\/api\/states\/todo\.shopping_[a-z_]+$/;
+const SERVICE_PATH_RE = /^\/api\/services\/todo\/(get_items|add_item|update_item|remove_item|remove_completed_items)$/;
+
+type AllowDecision =
+  | { kind: 'state' }
+  | { kind: 'service' }
+  | null;
+
+function classifyRequest(method: string, pathname: string): AllowDecision {
+  if (method === 'GET' && STATE_PATH_RE.test(pathname)) {
+    return { kind: 'state' };
+  }
+  if (method === 'POST' && SERVICE_PATH_RE.test(pathname)) {
+    return { kind: 'service' };
+  }
+  return null;
+}
+
+async function readAndValidateServiceBody(
+  request: Request,
+): Promise<{ ok: true; body: ArrayBuffer } | { ok: false; reason: string }> {
+  const buf = await request.arrayBuffer();
+  if (buf.byteLength === 0) {
+    return { ok: false, reason: 'empty body' };
+  }
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(new TextDecoder().decode(buf));
+  } catch {
+    return { ok: false, reason: 'invalid JSON' };
+  }
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+    return { ok: false, reason: 'body must be a JSON object' };
+  }
+  const eid = (parsed as Record<string, unknown>).entity_id;
+  if (typeof eid !== 'string') {
+    return { ok: false, reason: 'entity_id must be a string' };
+  }
+  if (!ENTITY_RE.test(eid)) {
+    return { ok: false, reason: 'entity_id must match todo.shopping_*' };
+  }
+  return { ok: true, body: buf };
+}
 
 export default async function handler(request: Request): Promise<Response> {
   const haUrl = process.env.HA_URL;
@@ -36,43 +89,45 @@ export default async function handler(request: Request): Promise<Response> {
     });
   }
 
-  const incoming = new URL(request.url);
-  const target = haUrl.replace(/\/$/, '') + incoming.pathname + incoming.search;
-
-  const headers = new Headers(request.headers);
-  headers.set('Authorization', `Bearer ${haToken}`);
-  // Don't forward host-header sniffing or Vercel-internal markers.
-  headers.delete('host');
-  headers.delete('x-forwarded-host');
-  headers.delete('x-vercel-id');
-  headers.delete('x-vercel-deployment-url');
-  headers.delete('x-vercel-forwarded-for');
-  // Don't forward client cookies — we're using injected bearer auth, and
-  // forwarding stale cookies confuses HA's session layer.
-  headers.delete('cookie');
-
-  const init: RequestInit = {
-    method: request.method,
-    headers,
-    redirect: 'manual',
-  };
-  if (!['GET', 'HEAD'].includes(request.method)) {
-    init.body = await request.arrayBuffer();
+  const url = new URL(request.url);
+  const decision = classifyRequest(request.method, url.pathname);
+  if (!decision) {
+    return new Response('not found', { status: 404 });
   }
 
-  const upstream = await fetch(target, init);
+  let body: ArrayBuffer | null = null;
+  if (decision.kind === 'service') {
+    const v = await readAndValidateServiceBody(request);
+    if (!v.ok) {
+      return new Response(`forbidden: ${v.reason}`, { status: 403 });
+    }
+    body = v.body;
+  }
 
-  const respHeaders = new Headers(upstream.headers);
-  // fetch decoded the body for us; let the platform recompute these.
-  respHeaders.delete('content-encoding');
-  respHeaders.delete('content-length');
-  // Don't let HA set cookies on the proxy domain (would break our
-  // bearer-token model and could leak across requests).
-  respHeaders.delete('set-cookie');
+  const target = haUrl.replace(/\/$/, '') + url.pathname + url.search;
+  const upstreamHeaders = new Headers();
+  const ctype = request.headers.get('content-type');
+  if (ctype) upstreamHeaders.set('content-type', ctype);
+  const accept = request.headers.get('accept');
+  if (accept) upstreamHeaders.set('accept', accept);
+  upstreamHeaders.set('authorization', `Bearer ${haToken}`);
+
+  const upstream = await fetch(target, {
+    method: request.method,
+    headers: upstreamHeaders,
+    body,
+    redirect: 'manual',
+  });
+
+  const responseHeaders = new Headers();
+  const upCtype = upstream.headers.get('content-type');
+  if (upCtype) responseHeaders.set('content-type', upCtype);
+  // Don't forward Set-Cookie (we're token-injecting, not session-based)
+  // or content-encoding (fetch already decoded the body).
 
   return new Response(upstream.body, {
     status: upstream.status,
     statusText: upstream.statusText,
-    headers: respHeaders,
+    headers: responseHeaders,
   });
 }
