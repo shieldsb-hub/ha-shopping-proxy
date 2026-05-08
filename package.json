@@ -1,0 +1,6 @@
+{
+  "name": "ha-shopping-proxy",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Vercel Edge Function — transparent proxy to Home Assistant with token injection, fronting the family shopping list kiosk."
+}
