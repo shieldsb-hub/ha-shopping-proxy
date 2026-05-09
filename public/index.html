@@ -26,6 +26,7 @@
   --muted: #6b7878;
   --border: #d8e3e3;
   --danger: #d32f2f;
+  --orange: #f57c00;
 }
 * { box-sizing: border-box; }
 html, body { margin: 0; padding: 0; }
@@ -40,7 +41,7 @@ body {
 .app {
   max-width: 600px;
   margin: 0 auto;
-  padding: 0 16px max(16px, env(safe-area-inset-bottom));
+  padding: 0 16px max(96px, env(safe-area-inset-bottom));
 }
 header {
   position: sticky;
@@ -61,22 +62,26 @@ header h1 {
   margin: 0;
   padding-top: 12px;
 }
-.refresh-btn {
+.header-actions { display: flex; gap: 8px; padding-top: 8px; }
+.header-btn {
   background: rgba(255,255,255,0.2);
   border: none;
   color: white;
   width: 36px; height: 36px;
   border-radius: 50%;
-  font-size: 20px;
-  margin-top: 8px;
+  font-size: 18px;
   cursor: pointer;
   display: flex; align-items: center; justify-content: center;
   font-family: inherit;
   -webkit-appearance: none;
   appearance: none;
 }
-.refresh-btn:active { background: rgba(255,255,255,0.35); }
-.refresh-btn.spin { animation: spin 0.8s linear; }
+.header-btn:active { background: rgba(255,255,255,0.35); }
+.header-btn.spin { animation: spin 0.8s linear; }
+.header-btn.active {
+  background: white;
+  color: var(--teal-dark);
+}
 @keyframes spin { to { transform: rotate(360deg); } }
 
 .add-card {
@@ -87,6 +92,7 @@ header h1 {
   box-shadow: 0 1px 3px rgba(0,0,0,0.06);
   display: flex; gap: 8px;
 }
+body.plan-order .add-card { display: none; }
 .add-card input {
   flex: 1;
   border: 1px solid var(--border);
@@ -100,22 +106,34 @@ header h1 {
   min-width: 0;
 }
 .add-card input:focus { border-color: var(--teal); }
-.add-card button {
+.add-card button, .primary-btn {
   background: var(--teal);
   color: white;
   border: none;
   border-radius: 8px;
-  padding: 0 20px;
+  padding: 12px 20px;
   font-size: 16px;
   font-weight: 600;
   cursor: pointer;
-  min-width: 64px;
   font-family: inherit;
   -webkit-appearance: none;
   appearance: none;
 }
-.add-card button:active { background: var(--teal-dark); }
-.add-card button:disabled { opacity: 0.5; }
+.add-card button { padding: 0 20px; min-width: 64px; }
+.add-card button:active, .primary-btn:active { background: var(--teal-dark); }
+.add-card button:disabled, .primary-btn:disabled { opacity: 0.4; cursor: default; }
+
+.plan-mode-banner {
+  background: var(--teal-light);
+  color: var(--teal-dark);
+  border-radius: 12px;
+  padding: 12px 16px;
+  margin: 16px 0;
+  font-size: 14px;
+  display: none;
+  text-align: center;
+}
+body.plan-order .plan-mode-banner { display: block; }
 
 .category {
   background: var(--card);
@@ -165,17 +183,41 @@ header h1 {
   font-weight: bold;
   transition: background 0.15s, border-color 0.15s;
 }
-.item.checking .check {
+.item.checking .check, .item.selected .check {
   background: var(--teal);
   border-color: var(--teal);
 }
 .item.checking { opacity: 0.45; }
 .item.checking .summary { text-decoration: line-through; }
+
+/* Plan-order mode — items render with square checkboxes that toggle on tap. */
+body.plan-order .item .check { border-radius: 4px; }
+
 .summary {
   flex: 1;
   overflow-wrap: break-word;
   word-break: break-word;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
 }
+.ordered-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--orange);
+  color: white;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+.item.ordered { opacity: 0.7; }
+.item.ordered .summary-text { color: var(--muted); }
 
 .empty-state {
   text-align: center;
@@ -185,9 +227,124 @@ header h1 {
 }
 .empty-state .big { font-size: 36px; margin-bottom: 8px; }
 
+/* Sticky footer — visible only in plan-order mode. */
+.order-footer {
+  position: fixed;
+  bottom: 0; left: 0; right: 0;
+  background: var(--card);
+  border-top: 1px solid var(--border);
+  padding: 12px 16px max(12px, env(safe-area-inset-bottom)) 16px;
+  display: none;
+  align-items: center;
+  gap: 12px;
+  box-shadow: 0 -4px 12px rgba(0,0,0,0.06);
+  z-index: 20;
+}
+body.plan-order .order-footer { display: flex; }
+.selection-count {
+  flex: 1;
+  font-size: 15px;
+  color: var(--muted);
+}
+.selection-count strong { color: var(--text); }
+
+/* Confirmation modal. */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.5);
+  display: none;
+  align-items: flex-end;
+  justify-content: center;
+  z-index: 100;
+}
+.modal-backdrop.show { display: flex; }
+.modal {
+  background: var(--card);
+  border-radius: 16px 16px 0 0;
+  width: 100%;
+  max-width: 600px;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+}
+.modal-header {
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border);
+}
+.modal-header h2 { margin: 0 0 4px; font-size: 18px; font-weight: 600; }
+.modal-header .subtitle { font-size: 13px; color: var(--muted); }
+.modal-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px 20px;
+}
+.modal-footer {
+  padding: 12px 16px max(12px, env(safe-area-inset-bottom));
+  border-top: 1px solid var(--border);
+  display: flex;
+  gap: 8px;
+}
+.modal-footer button {
+  flex: 1;
+  padding: 12px;
+  font-size: 15px;
+  font-weight: 600;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+}
+.modal-footer .cancel-btn {
+  background: transparent;
+  color: var(--muted);
+  border: 1px solid var(--border);
+}
+.modal-footer .submit-btn {
+  background: var(--teal);
+  color: white;
+  flex: 2;
+}
+.modal-footer .submit-btn:disabled { opacity: 0.4; }
+
+.confirm-row {
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border);
+}
+.confirm-row:last-child { border-bottom: none; }
+.confirm-row .row-label {
+  font-size: 13px;
+  color: var(--muted);
+  margin-bottom: 6px;
+}
+.confirm-row .row-label strong { color: var(--text); }
+.confirm-row select {
+  width: 100%;
+  padding: 10px 12px;
+  font-size: 15px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--card);
+  color: var(--text);
+  font-family: inherit;
+  -webkit-appearance: none;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%236b7878' d='M6 8L0 0h12z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  padding-right: 36px;
+}
+.confirm-row .loading,
+.confirm-row .no-match {
+  font-size: 14px;
+  color: var(--muted);
+  font-style: italic;
+}
+.confirm-row .no-match { color: var(--danger); font-style: normal; }
+
 .toast {
   position: fixed;
-  bottom: max(20px, env(safe-area-inset-bottom));
+  bottom: max(80px, env(safe-area-inset-bottom));
   left: 50%;
   transform: translateX(-50%) translateY(8px);
   background: rgba(45,58,58,0.95);
@@ -198,8 +355,10 @@ header h1 {
   opacity: 0;
   pointer-events: none;
   transition: opacity 0.2s, transform 0.2s;
-  z-index: 100;
+  z-index: 200;
   box-shadow: 0 4px 16px rgba(0,0,0,0.2);
+  max-width: 90vw;
+  text-align: center;
 }
 .toast.show {
   opacity: 1;
@@ -216,7 +375,9 @@ header h1 {
     --border: #2c3a3a;
     --teal-light: #173030;
   }
-  .add-card, .category { box-shadow: 0 1px 3px rgba(0,0,0,0.4); }
+  .add-card, .category, .modal, .order-footer {
+    box-shadow: 0 1px 3px rgba(0,0,0,0.4);
+  }
 }
 </style>
 </head>
@@ -224,7 +385,10 @@ header h1 {
 <div class="app">
   <header>
     <h1>Shopping</h1>
-    <button class="refresh-btn" id="refresh-btn" aria-label="Refresh">⟳</button>
+    <div class="header-actions">
+      <button class="header-btn" id="plan-order-btn" aria-label="Plan order" title="Plan order">📋</button>
+      <button class="header-btn" id="refresh-btn" aria-label="Refresh">⟳</button>
+    </div>
   </header>
 
   <div class="add-card">
@@ -235,6 +399,10 @@ header h1 {
     <button id="add-btn">Add</button>
   </div>
 
+  <div class="plan-mode-banner">
+    Tap items to select, then tap <strong>Order on Harris Farm</strong>.
+  </div>
+
   <div id="categories"></div>
 
   <div class="empty-state" id="empty-state" hidden>
@@ -243,12 +411,30 @@ header h1 {
   </div>
 </div>
 
+<div class="order-footer">
+  <span class="selection-count" id="selection-count"><strong>0</strong> selected</span>
+  <button class="primary-btn" id="open-confirm-btn" disabled>Order on Harris Farm</button>
+</div>
+
+<div class="modal-backdrop" id="confirm-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <h2>Confirm order</h2>
+      <div class="subtitle" id="modal-subtitle">Pick a variant for each item.</div>
+    </div>
+    <div class="modal-body" id="confirm-rows"></div>
+    <div class="modal-footer">
+      <button class="cancel-btn" id="cancel-btn">Cancel</button>
+      <button class="submit-btn" id="submit-btn" disabled>Open cart on Harris Farm</button>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script>
 (() => {
-  // Mirrors ha-shopping/scripts/push_shopping.py CATEGORIES — must stay in
-  // sync with the HA-side routing automation's keyword map order.
+  // Mirrors ha-shopping/scripts/push_shopping.py CATEGORIES.
   const CATEGORIES = [
     ['todo.shopping_produce',       'Produce',         '🥬'],
     ['todo.shopping_bakery',        'Bakery',          '🍞'],
@@ -261,28 +447,41 @@ header h1 {
     ['todo.shopping_other',         'Other',           '❓'],
   ];
   const POLL_MS = 3000;
-  // After adding/checking, poll once shortly to reflect the routing
-  // automation's effect (~100ms typical) without waiting for next tick.
   const QUICK_POLL_MS = 500;
+  const HF_PREF_KEY = (name) => 'hf_pref_' + name.toLowerCase().trim();
+  const HF_CART_BASE = 'https://www.harrisfarm.com.au/cart/';
 
   const $ = (id) => document.getElementById(id);
-  const categoriesEl = $('categories');
-  const emptyStateEl = $('empty-state');
-  const inputEl = $('add-input');
-  const addBtn = $('add-btn');
-  const refreshBtn = $('refresh-btn');
-  const toastEl = $('toast');
+  const refs = {
+    categories: $('categories'),
+    emptyState: $('empty-state'),
+    inputEl: $('add-input'),
+    addBtn: $('add-btn'),
+    refreshBtn: $('refresh-btn'),
+    planOrderBtn: $('plan-order-btn'),
+    toast: $('toast'),
+    selectionCount: $('selection-count'),
+    openConfirmBtn: $('open-confirm-btn'),
+    confirmModal: $('confirm-modal'),
+    confirmRows: $('confirm-rows'),
+    modalSubtitle: $('modal-subtitle'),
+    cancelBtn: $('cancel-btn'),
+    submitBtn: $('submit-btn'),
+  };
 
   let pollTimer = null;
   let lastSnapshot = {};
-  const inflight = new Set(); // item uids currently being checked off
+  const inflight = new Set();   // uids being checked off
+  let planOrderMode = false;
+  const selected = new Set();   // uids selected for ordering
+  let confirmRows = [];         // [{ uid, name, entityId, candidates, chosenIdx }] during modal
 
   function showToast(msg, isError) {
-    toastEl.textContent = msg;
-    toastEl.classList.toggle('error', !!isError);
-    toastEl.classList.add('show');
+    refs.toast.textContent = msg;
+    refs.toast.classList.toggle('error', !!isError);
+    refs.toast.classList.add('show');
     clearTimeout(showToast._t);
-    showToast._t = setTimeout(() => toastEl.classList.remove('show'), 2400);
+    showToast._t = setTimeout(() => refs.toast.classList.remove('show'), 2400);
   }
 
   async function callApi(path, opts) {
@@ -294,10 +493,9 @@ header h1 {
     return r.json().catch(() => null);
   }
 
+  // ─── HA item operations ─────────────────────────────────────────────
+
   async function fetchAllItems() {
-    // POST /api/services/todo/get_items per category in parallel.
-    // status=needs_action filter is server-side so completed items don't
-    // ride the wire.
     const pairs = await Promise.all(
       CATEGORIES.map(async ([entityId]) => {
         try {
@@ -306,15 +504,10 @@ header h1 {
             {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                entity_id: entityId,
-                status: 'needs_action',
-              }),
+              body: JSON.stringify({ entity_id: entityId, status: 'needs_action' }),
             },
           );
-          const items = r && r.service_response &&
-                        r.service_response[entityId] &&
-                        r.service_response[entityId].items || [];
+          const items = (r && r.service_response && r.service_response[entityId] && r.service_response[entityId].items) || [];
           return [entityId, items];
         } catch (e) {
           console.warn(`fetch ${entityId} failed`, e);
@@ -325,6 +518,13 @@ header h1 {
     return Object.fromEntries(pairs);
   }
 
+  function parseDescription(desc) {
+    if (!desc || desc[0] !== '{') return null;
+    try { return JSON.parse(desc); } catch { return null; }
+  }
+
+  // ─── Render ─────────────────────────────────────────────────────────
+
   function escapeHtml(s) {
     return String(s).replace(/[&<>"']/g, (c) => (
       { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]
@@ -334,15 +534,28 @@ header h1 {
   function render(snapshot) {
     let total = 0;
     const html = CATEGORIES.map(([entityId, name, emoji]) => {
-      const items = (snapshot[entityId] || []);
+      const items = snapshot[entityId] || [];
       if (!items.length) return '';
       total += items.length;
       const itemsHtml = items.map((i) => {
         const checking = inflight.has(i.uid);
-        return `<div class="item ${checking ? 'checking' : ''}"
+        const isSelected = selected.has(i.uid);
+        const orderInfo = parseDescription(i.description);
+        const classes = ['item'];
+        if (checking) classes.push('checking');
+        if (isSelected) classes.push('selected');
+        if (orderInfo && orderInfo.ordered) classes.push('ordered');
+        const checkChar = checking ? '✓' : (isSelected ? '✓' : '');
+        const chip = (orderInfo && orderInfo.ordered)
+          ? `<span class="ordered-chip">${escapeHtml(orderInfo.ordered)}</span>`
+          : '';
+        return `<div class="${classes.join(' ')}"
           data-entity="${entityId}" data-uid="${escapeHtml(i.uid)}">
-          <span class="check">${checking ? '✓' : ''}</span>
-          <span class="summary">${escapeHtml(i.summary)}</span>
+          <span class="check">${checkChar}</span>
+          <span class="summary">
+            <span class="summary-text">${escapeHtml(i.summary)}</span>
+            ${chip}
+          </span>
         </div>`;
       }).join('');
       return `<section class="category">
@@ -350,16 +563,17 @@ header h1 {
         ${itemsHtml}
       </section>`;
     }).join('');
-    categoriesEl.innerHTML = html;
-    emptyStateEl.hidden = total > 0;
+    refs.categories.innerHTML = html;
+    refs.emptyState.hidden = total > 0;
     lastSnapshot = snapshot;
+    if (planOrderMode) updateOrderFooter();
   }
 
   let refreshing = false;
   async function refresh(spin) {
     if (refreshing) return;
     refreshing = true;
-    if (spin) refreshBtn.classList.add('spin');
+    if (spin) refs.refreshBtn.classList.add('spin');
     try {
       const snapshot = await fetchAllItems();
       render(snapshot);
@@ -368,35 +582,29 @@ header h1 {
       showToast('Failed to refresh', true);
     } finally {
       refreshing = false;
-      setTimeout(() => refreshBtn.classList.remove('spin'), 800);
+      setTimeout(() => refs.refreshBtn.classList.remove('spin'), 800);
     }
   }
 
   async function addItem() {
-    const text = inputEl.value.trim();
+    const text = refs.inputEl.value.trim();
     if (!text) return;
-    inputEl.value = '';
-    addBtn.disabled = true;
+    refs.inputEl.value = '';
+    refs.addBtn.disabled = true;
     try {
       await callApi('/api/services/todo/add_item', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          entity_id: 'todo.shopping_list',
-          item: text,
-        }),
+        body: JSON.stringify({ entity_id: 'todo.shopping_list', item: text }),
       });
-      // Routing automation moves it to a category list within ~100ms.
-      // Quick poll to pick up the change, then a backup poll in case
-      // routing was momentarily slow.
       setTimeout(refresh, QUICK_POLL_MS);
       setTimeout(refresh, QUICK_POLL_MS * 4);
     } catch (e) {
       console.error(e);
       showToast('Failed to add', true);
-      inputEl.value = text;
+      refs.inputEl.value = text;
     } finally {
-      addBtn.disabled = false;
+      refs.addBtn.disabled = false;
     }
   }
 
@@ -409,13 +617,8 @@ header h1 {
       await callApi('/api/services/todo/update_item', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          entity_id: entityId,
-          item: uid,
-          status: 'completed',
-        }),
+        body: JSON.stringify({ entity_id: entityId, item: uid, status: 'completed' }),
       });
-      // Brief delay so user sees the checked state, then refresh.
       setTimeout(() => { inflight.delete(uid); refresh(); }, 300);
     } catch (e) {
       console.error(e);
@@ -426,23 +629,259 @@ header h1 {
     }
   }
 
-  // Wire up.
-  addBtn.addEventListener('click', addItem);
-  inputEl.addEventListener('keydown', (e) => {
+  // ─── Plan-order mode ────────────────────────────────────────────────
+
+  function togglePlanOrderMode() {
+    planOrderMode = !planOrderMode;
+    selected.clear();
+    document.body.classList.toggle('plan-order', planOrderMode);
+    refs.planOrderBtn.classList.toggle('active', planOrderMode);
+    render(lastSnapshot);
+    updateOrderFooter();
+  }
+
+  function toggleSelection(uid) {
+    if (selected.has(uid)) selected.delete(uid);
+    else selected.add(uid);
+    document.querySelectorAll(`.item[data-uid="${CSS.escape(uid)}"]`)
+      .forEach((el) => {
+        el.classList.toggle('selected', selected.has(uid));
+        el.querySelector('.check').textContent = selected.has(uid) ? '✓' : '';
+      });
+    updateOrderFooter();
+  }
+
+  function updateOrderFooter() {
+    const n = selected.size;
+    refs.selectionCount.innerHTML = `<strong>${n}</strong> selected`;
+    refs.openConfirmBtn.disabled = n === 0;
+  }
+
+  // ─── Harris Farm lookup ─────────────────────────────────────────────
+
+  async function fetchCandidatesForItem(itemName) {
+    // Returns flat list [{label, variant_id, price, productHandle}], cheapest first.
+    let searchData;
+    try {
+      searchData = await callApi(
+        `/api/harrisfarm/search?q=${encodeURIComponent(itemName.trim())}`,
+      );
+    } catch (e) {
+      console.warn('HF search failed for', itemName, e);
+      return [];
+    }
+    const products = (searchData && searchData.resources &&
+                      searchData.resources.results &&
+                      searchData.resources.results.products) || [];
+    if (!products.length) return [];
+    // Fetch variants for each product in parallel. Limit to top 5 to bound
+    // payload — search returns up to 10 but most users don't need all.
+    const top = products.slice(0, 5);
+    const productResponses = await Promise.all(
+      top.map(async (p) => {
+        try {
+          const d = await callApi(`/api/harrisfarm/product/${encodeURIComponent(p.handle)}`);
+          return { handle: p.handle, title: p.title, image: p.image, product: d && d.product };
+        } catch (e) {
+          console.warn('HF product fetch failed for', p.handle, e);
+          return { handle: p.handle, title: p.title, image: p.image, product: null };
+        }
+      }),
+    );
+    const out = [];
+    for (const pr of productResponses) {
+      if (!pr.product) continue;
+      // Take the first variant — Shopify's "Default / Default" — and the
+      // product-level price. Region-specific variants share the same price
+      // for our purposes; HF re-prices by postcode at checkout.
+      const v = (pr.product.variants || [])[0];
+      if (!v) continue;
+      out.push({
+        label: pr.title,
+        variantId: String(v.id),
+        price: parseFloat(v.price || pr.product.price || '0'),
+        productHandle: pr.handle,
+      });
+    }
+    out.sort((a, b) => a.price - b.price);
+    return out;
+  }
+
+  function defaultIndexFor(itemName, candidates) {
+    const cached = localStorage.getItem(HF_PREF_KEY(itemName));
+    if (cached) {
+      const idx = candidates.findIndex((c) => c.variantId === cached);
+      if (idx !== -1) return idx;
+    }
+    return 0; // cheapest, since list is sorted ascending
+  }
+
+  // ─── Confirmation modal ─────────────────────────────────────────────
+
+  async function openConfirmModal() {
+    const items = [];
+    for (const [entityId, list] of Object.entries(lastSnapshot)) {
+      for (const it of list) {
+        if (selected.has(it.uid)) {
+          items.push({ uid: it.uid, name: it.summary, entityId });
+        }
+      }
+    }
+    if (items.length === 0) return;
+
+    // Show modal immediately with loading state.
+    confirmRows = items.map((it) => ({ ...it, candidates: null, chosenIdx: -1 }));
+    refs.confirmModal.classList.add('show');
+    refs.modalSubtitle.textContent = `Looking up ${items.length} item${items.length === 1 ? '' : 's'} on Harris Farm…`;
+    refs.submitBtn.disabled = true;
+    renderConfirmRows();
+
+    // Fetch candidates in parallel.
+    await Promise.all(
+      confirmRows.map(async (row, idx) => {
+        const cands = await fetchCandidatesForItem(row.name);
+        row.candidates = cands;
+        row.chosenIdx = cands.length > 0 ? defaultIndexFor(row.name, cands) : -1;
+        // Update the row in place as it loads.
+        renderConfirmRow(idx);
+      }),
+    );
+
+    refs.modalSubtitle.textContent = 'Pick a variant for each item, then submit.';
+    updateSubmitState();
+  }
+
+  function closeConfirmModal() {
+    refs.confirmModal.classList.remove('show');
+    confirmRows = [];
+  }
+
+  function renderConfirmRows() {
+    refs.confirmRows.innerHTML = confirmRows.map((_, idx) => `<div class="confirm-row" data-idx="${idx}"></div>`).join('');
+    confirmRows.forEach((_, idx) => renderConfirmRow(idx));
+  }
+
+  function renderConfirmRow(idx) {
+    const row = confirmRows[idx];
+    const el = refs.confirmRows.querySelector(`.confirm-row[data-idx="${idx}"]`);
+    if (!el) return;
+    if (row.candidates === null) {
+      el.innerHTML = `
+        <div class="row-label"><strong>${escapeHtml(row.name)}</strong></div>
+        <div class="loading">Searching…</div>`;
+      return;
+    }
+    if (row.candidates.length === 0) {
+      el.innerHTML = `
+        <div class="row-label"><strong>${escapeHtml(row.name)}</strong></div>
+        <div class="no-match">No Harris Farm match — will be skipped.</div>`;
+      return;
+    }
+    const optionsHtml = row.candidates.map((c, i) => {
+      const sel = i === row.chosenIdx ? 'selected' : '';
+      return `<option value="${i}" ${sel}>$${c.price.toFixed(2)} — ${escapeHtml(c.label)}</option>`;
+    }).join('');
+    el.innerHTML = `
+      <div class="row-label"><strong>${escapeHtml(row.name)}</strong></div>
+      <select data-idx="${idx}">${optionsHtml}</select>`;
+  }
+
+  function updateSubmitState() {
+    const anyMatched = confirmRows.some((r) => r.candidates && r.candidates.length > 0);
+    const stillLoading = confirmRows.some((r) => r.candidates === null);
+    refs.submitBtn.disabled = !anyMatched || stillLoading;
+  }
+
+  async function submitOrder() {
+    const matched = confirmRows.filter((r) => r.candidates && r.candidates.length > 0);
+    if (matched.length === 0) {
+      closeConfirmModal();
+      return;
+    }
+    const orderedAt = new Date().toISOString();
+    const cartParts = [];
+    for (const row of matched) {
+      const c = row.candidates[row.chosenIdx];
+      cartParts.push(`${c.variantId}:1`);
+      // Cache user's choice for next time
+      localStorage.setItem(HF_PREF_KEY(row.name), c.variantId);
+    }
+    const cartUrl = HF_CART_BASE + cartParts.join(',') + '?storefront=true';
+
+    // Tag each item in HA with description JSON. Failures tagged but
+    // non-blocking — open the cart regardless so the user can still
+    // checkout, even if HA write momentarily failed.
+    const tagPromises = matched.map((row) => {
+      const c = row.candidates[row.chosenIdx];
+      const desc = JSON.stringify({
+        ordered: 'Harris Farm',
+        ordered_at: orderedAt,
+        variant_id: c.variantId,
+      });
+      return callApi('/api/services/todo/update_item', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ entity_id: row.entityId, item: row.uid, description: desc }),
+      }).catch((e) => console.warn('tag failed for', row.uid, e));
+    });
+
+    // Open the cart immediately — Safari blocks window.open() unless it's
+    // synchronous in the user gesture handler.
+    const opened = window.open(cartUrl, '_blank');
+    if (!opened) {
+      // Pop-up was blocked. Fall back to current window.
+      window.location.href = cartUrl;
+    }
+
+    await Promise.all(tagPromises);
+
+    // Clean up UI state and refresh to show "ordered" chips.
+    selected.clear();
+    closeConfirmModal();
+    if (planOrderMode) togglePlanOrderMode();
+    setTimeout(refresh, 400);
+    showToast(`${matched.length} item${matched.length === 1 ? '' : 's'} sent to Harris Farm`);
+  }
+
+  // ─── Wire up ────────────────────────────────────────────────────────
+
+  refs.addBtn.addEventListener('click', addItem);
+  refs.inputEl.addEventListener('keydown', (e) => {
     if (e.key === 'Enter') { e.preventDefault(); addItem(); }
   });
-  refreshBtn.addEventListener('click', () => refresh(true));
-  categoriesEl.addEventListener('click', (e) => {
+  refs.refreshBtn.addEventListener('click', () => refresh(true));
+  refs.planOrderBtn.addEventListener('click', togglePlanOrderMode);
+  refs.openConfirmBtn.addEventListener('click', openConfirmModal);
+  refs.cancelBtn.addEventListener('click', closeConfirmModal);
+  refs.submitBtn.addEventListener('click', submitOrder);
+  refs.confirmModal.addEventListener('click', (e) => {
+    if (e.target === refs.confirmModal) closeConfirmModal();
+  });
+
+  refs.categories.addEventListener('click', (e) => {
     const item = e.target.closest('.item');
-    if (item && !item.classList.contains('checking')) {
+    if (!item || item.classList.contains('checking')) return;
+    if (planOrderMode) {
+      toggleSelection(item.dataset.uid);
+    } else {
       checkOff(item.dataset.entity, item.dataset.uid);
     }
   });
 
-  // Polling: only when document is visible. Saves battery + Vercel quota.
+  refs.confirmRows.addEventListener('change', (e) => {
+    const sel = e.target.closest('select[data-idx]');
+    if (!sel) return;
+    const idx = parseInt(sel.dataset.idx, 10);
+    confirmRows[idx].chosenIdx = parseInt(sel.value, 10);
+  });
+
+  // Polling — only when document is visible. Pause during plan-order
+  // mode so that the user's selection state isn't disrupted by re-render.
   function startPolling() {
     if (pollTimer) return;
-    pollTimer = setInterval(refresh, POLL_MS);
+    pollTimer = setInterval(() => {
+      if (!planOrderMode) refresh();
+    }, POLL_MS);
   }
   function stopPolling() {
     if (!pollTimer) return;
@@ -454,7 +893,6 @@ header h1 {
     else { refresh(); startPolling(); }
   });
 
-  // Boot.
   refresh().then(startPolling);
 })();
 </script>
