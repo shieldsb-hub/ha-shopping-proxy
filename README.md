@@ -1,5 +1,7 @@
 # ha-shopping-proxy
 
+> Docs follow [`ha-platform/DOC_STRATEGY.md`](../ha-platform/DOC_STRATEGY.md).
+
 Vercel Edge Function + custom kiosk SPA that fronts the family shopping
 list at **shopping.bkia.com.au**. Anyone with the URL is silently logged
 in as a dedicated kiosk HA user (`kiosk`, non-admin) and lands on a
