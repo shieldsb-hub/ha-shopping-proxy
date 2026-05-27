@@ -6,10 +6,14 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 
 <!-- Standalone iOS app metadata so Add-to-Home-Screen looks native. -->
+<meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Shopping">
 <meta name="theme-color" content="#26a69a">
+
+<!-- PWA install + offline. -->
+<link rel="manifest" href="/manifest.json">
 
 <!-- iOS only renders PNG/JPG for apple-touch-icon. -->
 <link rel="apple-touch-icon" sizes="180x180" href="/icon.png">
@@ -895,6 +899,17 @@ body.plan-order .order-footer { display: flex; }
 
   refresh().then(startPolling);
 })();
+</script>
+
+<script>
+// Register the service worker so brief WiFi blips don't blank the
+// wall iPad mid-shop. updateViaCache:'none' makes the browser bypass
+// HTTP cache when polling sw.js for updates so new versions roll out
+// promptly.
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/sw.js', { updateViaCache: 'none' })
+    .catch((err) => console.warn('[sw] registration failed:', err));
+}
 </script>
 </body>
 </html>
