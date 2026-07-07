@@ -13,6 +13,7 @@ The discipline lives in the hub. Read it there; don't duplicate it here.
 - [`ha-platform/DOC_STRATEGY.md`](../ha-platform/DOC_STRATEGY.md) — doc types, where each lives, maintenance contracts.
 - [`ha-platform/CONVENTIONS.md`](../ha-platform/CONVENTIONS.md) — repo layout, naming, deploy patterns.
 - [`ha-platform/PROJECTS.md`](../ha-platform/PROJECTS.md) — what this repo owns and how it relates to siblings.
+- [`ha-zwave/STATUS.md`](../ha-zwave/STATUS.md) — **two Z-Wave controllers/meshes** (Yubii HC3 `fibaro` + Pi `zwave_js`) since the HC2 died; the Yubii backup-restore left ghost entities with frozen state. Check which controller owns a device before diagnosing a "misbehaving" Z-Wave entity.
 
 This repo's own current state is in [`STATUS.md`](STATUS.md) (when present); its
 design and rationale in [`BRIEFING.md`](BRIEFING.md).
