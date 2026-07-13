@@ -82,6 +82,9 @@ header h1 {
 }
 .header-btn:active { background: rgba(255,255,255,0.35); }
 .header-btn.spin { animation: spin 0.8s linear; }
+/* Paprika sync: the app icon is square artwork; the border-radius turns
+   it into a circular badge that fills the round header button. */
+.header-btn img { width: 26px; height: 26px; border-radius: 50%; display: block; }
 .header-btn.active {
   background: white;
   color: var(--teal-dark);
@@ -390,6 +393,7 @@ body.plan-order .order-footer { display: flex; }
   <header>
     <h1>Shopping</h1>
     <div class="header-actions">
+      <button class="header-btn" id="paprika-sync-btn" aria-label="Sync from Paprika" title="Sync from Paprika"><img src="/paprika.png" alt=""></button>
       <button class="header-btn" id="plan-order-btn" aria-label="Plan order" title="Plan order">📋</button>
       <button class="header-btn" id="refresh-btn" aria-label="Refresh">⟳</button>
     </div>
@@ -463,6 +467,7 @@ body.plan-order .order-footer { display: flex; }
     addBtn: $('add-btn'),
     refreshBtn: $('refresh-btn'),
     planOrderBtn: $('plan-order-btn'),
+    paprikaSyncBtn: $('paprika-sync-btn'),
     toast: $('toast'),
     selectionCount: $('selection-count'),
     openConfirmBtn: $('open-confirm-btn'),
@@ -587,6 +592,27 @@ body.plan-order .order-footer { display: flex; }
     } finally {
       refreshing = false;
       setTimeout(() => refs.refreshBtn.classList.remove('spin'), 800);
+    }
+  }
+
+  // Press the HA input_button that runs the Paprika grocery sync
+  // (ha-shopping BRIEFING M7). The gateway fixes the entity server-side.
+  // Transferred items surface via the normal 3 s poll once HA's
+  // automation has fetched, routed and categorised them (a few seconds).
+  async function paprikaSync() {
+    refs.paprikaSyncBtn.disabled = true;
+    refs.paprikaSyncBtn.classList.add('spin');
+    try {
+      await callApi('/api/paprika/sync', { method: 'POST' });
+      showToast('Syncing from Paprika…');
+    } catch (e) {
+      console.error(e);
+      showToast('Paprika sync failed', true);
+    } finally {
+      setTimeout(() => {
+        refs.paprikaSyncBtn.classList.remove('spin');
+        refs.paprikaSyncBtn.disabled = false;
+      }, 800);
     }
   }
 
@@ -854,6 +880,7 @@ body.plan-order .order-footer { display: flex; }
     if (e.key === 'Enter') { e.preventDefault(); addItem(); }
   });
   refs.refreshBtn.addEventListener('click', () => refresh(true));
+  refs.paprikaSyncBtn.addEventListener('click', paprikaSync);
   refs.planOrderBtn.addEventListener('click', togglePlanOrderMode);
   refs.openConfirmBtn.addEventListener('click', openConfirmModal);
   refs.cancelBtn.addEventListener('click', closeConfirmModal);

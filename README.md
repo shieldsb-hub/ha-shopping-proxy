@@ -30,6 +30,8 @@ shopping.bkia.com.au  (Cloudflare DNS → Vercel)
 │    GET  /api/states/todo.shopping_<cat>     │   read list state
 │    POST /api/services/todo/{get,add,        │   list mutations
 │         update,remove,remove_completed}_*   │
+│    POST /api/paprika/sync                   │   press HA's Paprika
+│         (entity fixed server-side)          │   sync button (M7)
 │    GET  /api/harrisfarm/search?q=…          │   product search
 │    GET  /api/harrisfarm/product/<handle>    │   product details
 │                                             │

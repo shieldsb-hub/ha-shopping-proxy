@@ -21,6 +21,9 @@
 //   POST /api/services/todo/update_item              — check/uncheck/edit
 //   POST /api/services/todo/remove_item              — delete an item
 //   POST /api/services/todo/remove_completed_items   — clear all completed
+//   POST /api/paprika/sync                            — press the Paprika
+//        sync input_button in HA (entity fixed server-side; client body
+//        ignored — the gateway never forwards arbitrary button presses)
 //   GET  /api/harrisfarm/search?q=<term>             — HF product search
 //   GET  /api/harrisfarm/product/<handle>            — HF product details
 //
@@ -47,9 +50,14 @@ const HF_PRODUCT_PATH_RE = /^\/api\/harrisfarm\/product\/([a-z0-9-]+)$/;
 // avoids leaking arbitrary query terms into HF's logs.
 const HF_SEARCH_LIMIT = 10;
 
+// The HA input_button pressed by /api/paprika/sync. Hard-coded on the
+// server so the public client can never press any other button.
+const PAPRIKA_SYNC_BUTTON = 'input_button.paprika_sync_now';
+
 type Decision =
   | { kind: 'ha-state' }
   | { kind: 'ha-service' }
+  | { kind: 'paprika-sync' }
   | { kind: 'hf-search'; q: string }
   | { kind: 'hf-product'; handle: string }
   | null;
@@ -63,6 +71,9 @@ function classifyRequest(request: Request, url: URL): Decision {
   }
   if (method === 'POST' && HA_SERVICE_PATH_RE.test(pathname)) {
     return { kind: 'ha-service' };
+  }
+  if (method === 'POST' && pathname === '/api/paprika/sync') {
+    return { kind: 'paprika-sync' };
   }
   if (method === 'GET' && pathname === '/api/harrisfarm/search') {
     const q = (url.searchParams.get('q') || '').trim();
@@ -179,6 +190,23 @@ export default async function handler(request: Request): Promise<Response> {
       return new Response(`forbidden: ${v.reason}`, { status: 403 });
     }
     return forwardToHA(request, url, v.body, haUrl, haToken);
+  }
+  if (decision.kind === 'paprika-sync') {
+    const upstream = await fetch(
+      `${haUrl.replace(/\/$/, '')}/api/services/input_button/press`,
+      {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          authorization: `Bearer ${haToken}`,
+        },
+        body: JSON.stringify({ entity_id: PAPRIKA_SYNC_BUTTON }),
+      },
+    );
+    return new Response(JSON.stringify({ ok: upstream.ok }), {
+      status: upstream.ok ? 200 : upstream.status,
+      headers: { 'content-type': 'application/json; charset=utf-8' },
+    });
   }
   if (decision.kind === 'hf-search') {
     const target = `${HF_BASE}/search/suggest.json?q=${encodeURIComponent(decision.q)}&resources%5Btype%5D=product&resources%5Blimit%5D=${HF_SEARCH_LIMIT}`;
