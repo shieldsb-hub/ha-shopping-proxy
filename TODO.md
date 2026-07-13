@@ -11,4 +11,6 @@ _Nothing outstanding — operational since 2026-05-08._
 
 ## Done
 
+- [x] 2026-07-14 Paprika sync button in the kiosk header: POST /api/paprika/sync gateway route (entity fixed server-side), official app icon, toast + spin; verified live (button → gateway → HA automation trigger)
+
 _(prune freely — git history is the archive)_
