@@ -1,5 +1,8 @@
 # ha-shopping-proxy
 
+> **Maintenance contract:** Updated when scope, deploy commands, or
+> top-level structure changes.
+>
 > Docs follow [`ha-platform/DOC_STRATEGY.md`](../ha-platform/DOC_STRATEGY.md).
 
 Vercel Edge Function + custom kiosk SPA that fronts the family shopping
