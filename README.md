@@ -3,7 +3,7 @@
 > **Maintenance contract:** Updated when scope, deploy commands, or
 > top-level structure changes.
 >
-> Docs follow [`ha-platform/DOC_STRATEGY.md`](../ha-platform/DOC_STRATEGY.md).
+> Docs follow [`ha-platform/DOC_STRATEGY.md`](https://github.com/shieldsb-hub/ha-platform/blob/main/DOC_STRATEGY.md).
 
 Vercel Edge Function + custom kiosk SPA that fronts the family shopping
 list at **shopping.bkia.com.au**. Anyone with the URL is silently logged
@@ -57,7 +57,7 @@ Vercel project → Settings → Environment Variables (Production scope, Secret)
 ## Deploy
 
 Connected to Vercel via GitHub auto-import. Production deploys on push
-to `main`. First-time setup is documented in [`../ha-garden-proxy/README.md`](../ha-garden-proxy/README.md)
+to `main`. First-time setup is documented in [`../ha-garden-proxy/README.md`](https://github.com/shieldsb-hub/ha-garden-proxy/blob/main/README.md)
 — same pattern step-for-step (sibling project mirrors this one).
 
 ## Known limitations
