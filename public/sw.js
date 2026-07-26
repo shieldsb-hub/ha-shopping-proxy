@@ -19,7 +19,7 @@
 // fallback. Bumping ensures stale caches from old SW logic are nuked
 // in the activate handler.
 
-const VERSION = '2026-07-14.1';
+const VERSION = '2026-07-26.1';
 const CACHE_NAME = `ha-shopping-${VERSION}`;
 
 const PRECACHE_URLS = [
@@ -28,7 +28,6 @@ const PRECACHE_URLS = [
   '/manifest.json',
   '/icon.png',
   '/icon.svg',
-  '/paprika.png',
 ];
 
 self.addEventListener('install', (event) => {

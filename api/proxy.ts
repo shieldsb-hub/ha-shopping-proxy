@@ -21,9 +21,11 @@
 //   POST /api/services/todo/update_item              — check/uncheck/edit
 //   POST /api/services/todo/remove_item              — delete an item
 //   POST /api/services/todo/remove_completed_items   — clear all completed
-//   POST /api/paprika/sync                            — press the Paprika
-//        sync input_button in HA (entity fixed server-side; client body
-//        ignored — the gateway never forwards arbitrary button presses)
+//   POST /api/sync                                    — press the unified
+//        "sync all sources" input_button in HA (entity fixed server-side;
+//        client body ignored). Fans out to every source (Paprika, Alexa,
+//        future) HA-side. /api/paprika/sync is a legacy alias for the same
+//        press, kept for cached PWA clients from before the rename.
 //   GET  /api/harrisfarm/search?q=<term>             — HF product search
 //   GET  /api/harrisfarm/product/<handle>            — HF product details
 //
@@ -50,14 +52,16 @@ const HF_PRODUCT_PATH_RE = /^\/api\/harrisfarm\/product\/([a-z0-9-]+)$/;
 // avoids leaking arbitrary query terms into HF's logs.
 const HF_SEARCH_LIMIT = 10;
 
-// The HA input_button pressed by /api/paprika/sync. Hard-coded on the
-// server so the public client can never press any other button.
-const PAPRIKA_SYNC_BUTTON = 'input_button.paprika_sync_now';
+// The HA input_button pressed by /api/sync. Hard-coded on the server so the
+// public client can never press any other button. This one button fans out
+// to every source (Paprika, Alexa, future) HA-side, so new sources never
+// touch this public surface.
+const SYNC_ALL_BUTTON = 'input_button.shopping_sync_all';
 
 type Decision =
   | { kind: 'ha-state' }
   | { kind: 'ha-service' }
-  | { kind: 'paprika-sync' }
+  | { kind: 'sync' }
   | { kind: 'hf-search'; q: string }
   | { kind: 'hf-product'; handle: string }
   | null;
@@ -72,8 +76,9 @@ function classifyRequest(request: Request, url: URL): Decision {
   if (method === 'POST' && HA_SERVICE_PATH_RE.test(pathname)) {
     return { kind: 'ha-service' };
   }
-  if (method === 'POST' && pathname === '/api/paprika/sync') {
-    return { kind: 'paprika-sync' };
+  if (method === 'POST' && (pathname === '/api/sync' ||
+                            pathname === '/api/paprika/sync')) {
+    return { kind: 'sync' };
   }
   if (method === 'GET' && pathname === '/api/harrisfarm/search') {
     const q = (url.searchParams.get('q') || '').trim();
@@ -191,7 +196,7 @@ export default async function handler(request: Request): Promise<Response> {
     }
     return forwardToHA(request, url, v.body, haUrl, haToken);
   }
-  if (decision.kind === 'paprika-sync') {
+  if (decision.kind === 'sync') {
     const upstream = await fetch(
       `${haUrl.replace(/\/$/, '')}/api/services/input_button/press`,
       {
@@ -200,7 +205,7 @@ export default async function handler(request: Request): Promise<Response> {
           'content-type': 'application/json',
           authorization: `Bearer ${haToken}`,
         },
-        body: JSON.stringify({ entity_id: PAPRIKA_SYNC_BUTTON }),
+        body: JSON.stringify({ entity_id: SYNC_ALL_BUTTON }),
       },
     );
     return new Response(JSON.stringify({ ok: upstream.ok }), {
