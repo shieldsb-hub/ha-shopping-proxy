@@ -36,6 +36,9 @@ shopping.bkia.com.au  (Cloudflare DNS → Vercel)
 │    POST /api/sync                           │   press HA's unified
 │         (entity fixed server-side;          │   "sync all sources"
 │          /api/paprika/sync = legacy alias)  │   button (M7 + M8 +…)
+│         blocks ≤9 s for each source's       │   then report what
+│         result, then returns them per       │   each source did
+│         source, never collapsed             │
 │    GET  /api/harrisfarm/search?q=…          │   product search
 │    GET  /api/harrisfarm/product/<handle>    │   product details
 │                                             │

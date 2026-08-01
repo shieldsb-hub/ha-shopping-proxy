@@ -597,29 +597,49 @@ body.plan-order .order-footer { display: flex; }
     }
   }
 
-  // Press the HA input_button that runs the Paprika grocery sync
-  // (ha-shopping BRIEFING M7). The gateway fixes the entity server-side.
-  // Transferred items surface via the normal 3 s poll once HA's
-  // automation has fetched, routed and categorised them (a few seconds).
+  // Drop the trailing clock from a source's result string. HA needs it
+  // there (an identical value twice running is not a state change, so the
+  // result would look frozen), but the toast appears the moment the run
+  // ends, so the time says nothing. Unrecognised shapes pass through
+  // whole — worst case the toast is longer, never wrong.
+  function shortenSyncResult(result) {
+    return String(result).replace(/\s+at \d{2}:\d{2}:\d{2}$/, '');
+  }
+
+  // Press the HA input_button that fans out to every source, and WAIT for
+  // the answer: /api/sync now blocks until each source reports what its
+  // run did. The button stays disabled and spinning for those few seconds,
+  // which is also what stops the press-it-again-it-must-be-broken loop.
+  //
+  // Report per source. "nothing new" from one is not the other having
+  // worked, and a source that never reported is not a source that found
+  // nothing — say so rather than implying a zero.
   async function syncAll() {
     refs.syncBtn.disabled = true;
     refs.syncBtn.classList.add('spin');
+    showToast('Syncing…');
     try {
-      await callApi('/api/sync', { method: 'POST' });
-      showToast('Syncing…');
-      // The sync runs async in HA (each source: fetch → add → complete),
-      // so items land a few seconds after the press. Pull the list twice
-      // to show them without waiting for the next background poll.
-      setTimeout(() => refresh(), 2500);
-      setTimeout(() => refresh(), 6000);
+      const res = await callApi('/api/sync', { method: 'POST' });
+      const sources = (res && res.sources) || [];
+      if (sources.length) {
+        showToast(sources.map((s) => `${s.label}: ${
+          s.reported ? shortenSyncResult(s.result) : 'still running'
+        }`).join(' · '));
+      } else {
+        // A cached older gateway, or one that answered without detail.
+        showToast('Sync started');
+      }
+      // Both automations have finished by the time we get here, but the
+      // inbox router still has to categorise; one immediate pull plus a
+      // safety net.
+      refresh();
+      setTimeout(() => refresh(), 2000);
     } catch (e) {
       console.error(e);
       showToast('Sync failed', true);
     } finally {
-      setTimeout(() => {
-        refs.syncBtn.classList.remove('spin');
-        refs.syncBtn.disabled = false;
-      }, 800);
+      refs.syncBtn.classList.remove('spin');
+      refs.syncBtn.disabled = false;
     }
   }
 

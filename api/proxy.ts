@@ -26,6 +26,10 @@
 //        client body ignored). Fans out to every source (Paprika, Alexa,
 //        future) HA-side. /api/paprika/sync is a legacy alias for the same
 //        press, kept for cached PWA clients from before the rename.
+//        BLOCKS until each source reports what its run did, up to ~9 s,
+//        returning {ok, pending, sources:[{key,label,result,reported}]}.
+//        Older cached clients ignore the extra fields and still see
+//        {ok:true}, so the change is backwards-compatible.
 //   GET  /api/harrisfarm/search?q=<term>             — HF product search
 //   GET  /api/harrisfarm/product/<handle>            — HF product details
 //
@@ -57,6 +61,40 @@ const HF_SEARCH_LIMIT = 10;
 // to every source (Paprika, Alexa, future) HA-side, so new sources never
 // touch this public surface.
 const SYNC_ALL_BUTTON = 'input_button.shopping_sync_all';
+
+// Where each source reports what its last run actually did. /api/sync
+// presses the button and then WAITS for these to advance, so the kiosk can
+// say "Paprika: 1 item, Alexa: nothing new" instead of nothing at all.
+//
+// Before this, /api/sync returned {ok:true} the instant the button was
+// pressed — before either automation had run — so a sync that transferred
+// nothing looked exactly like one that worked. On 2026-08-01 that cost a
+// support round-trip: an item was still sitting unsynced on a phone, the
+// kiosk button got pressed three times in 40 seconds, and the sync was
+// reported broken while every layer was healthy.
+//
+// This is the one place the gateway knows individual sources, which does
+// erode the "proxy never learns about sources" property the unified button
+// was built for. Accepted deliberately (Ben, 2026-08-01): per-source
+// reporting is the whole point — a combined line would say something ran
+// and never which. A new source needs one entry here plus its HA-side
+// automation; nothing else on this surface changes.
+//
+// NOTE: these are read server-side with the gateway's own token. No new
+// client-readable route is opened — HA_STATE_PATH_RE still admits only
+// todo.shopping_*, and the client sees just the two result strings.
+const SYNC_SOURCES = [
+  { key: 'paprika', label: 'Paprika',
+    entity: 'input_text.paprika_sync_result' },
+  { key: 'alexa', label: 'Alexa',
+    entity: 'input_text.alexa_list_sync_result' },
+];
+
+// Typical run is 1.5-4 s (shell_command → external API → todo adds). The
+// deadline is a ceiling, not an expectation: we return as soon as every
+// source has reported.
+const SYNC_POLL_MS = 350;
+const SYNC_DEADLINE_MS = 9000;
 
 type Decision =
   | { kind: 'ha-state' }
@@ -116,6 +154,85 @@ async function readAndValidateServiceBody(
     return { ok: false, reason: 'entity_id must match todo.shopping_*' };
   }
   return { ok: true, body: buf };
+}
+
+type SourceReading = { state: string; lastUpdated: string } | null;
+
+async function readSyncSource(
+  base: string,
+  token: string,
+  entity: string,
+): Promise<SourceReading> {
+  const r = await fetch(`${base}/api/states/${entity}`, {
+    headers: { authorization: `Bearer ${token}` },
+  });
+  if (!r.ok) return null;
+  const j = await r.json().catch(() => null);
+  if (!j || typeof j.state !== 'string') return null;
+  return { state: j.state, lastUpdated: String(j.last_updated || '') };
+}
+
+// Press, then wait for each source to report. Per source, never collapsed
+// into one verdict: one source failing while the other worked is exactly
+// what the caller needs to see. A source that never reports comes back
+// reported:false rather than being guessed at — the automation is
+// mode:single/max_exceeded:silent, so a press landing while its 15-min
+// poll is mid-run is legitimately dropped and must not be shown as "0".
+//
+// The advance test is on last_updated, which works only because each
+// result value carries the clock to seconds: two runs with the same
+// outcome would otherwise write an identical string and HA would record
+// no state change at all (see packages/shopping_paprika.yaml in
+// ha-shopping).
+async function pressSyncAndAwaitSources(
+  base: string,
+  token: string,
+): Promise<Response> {
+  const baselines = await Promise.all(
+    SYNC_SOURCES.map((s) => readSyncSource(base, token, s.entity)),
+  );
+
+  const upstream = await fetch(`${base}/api/services/input_button/press`, {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ entity_id: SYNC_ALL_BUTTON }),
+  });
+  if (!upstream.ok) {
+    return new Response(JSON.stringify({ ok: false, pending: false, sources: [] }), {
+      status: upstream.status,
+      headers: { 'content-type': 'application/json; charset=utf-8' },
+    });
+  }
+
+  const sources = SYNC_SOURCES.map((s) => ({
+    key: s.key, label: s.label, result: null as string | null, reported: false,
+  }));
+  const seen = baselines.map((b) => (b ? b.lastUpdated : ''));
+
+  const deadline = Date.now() + SYNC_DEADLINE_MS;
+  while (Date.now() < deadline && sources.some((s) => !s.reported)) {
+    await new Promise((resolve) => setTimeout(resolve, SYNC_POLL_MS));
+    await Promise.all(SYNC_SOURCES.map(async (src, i) => {
+      if (sources[i].reported) return;
+      const now = await readSyncSource(base, token, src.entity);
+      if (now && now.lastUpdated !== seen[i]) {
+        sources[i].result = now.state;
+        sources[i].reported = true;
+      }
+    }));
+  }
+
+  return new Response(
+    JSON.stringify({
+      ok: true,
+      pending: sources.some((s) => !s.reported),
+      sources,
+    }),
+    { headers: { 'content-type': 'application/json; charset=utf-8' } },
+  );
 }
 
 async function forwardToHA(
@@ -197,21 +314,7 @@ export default async function handler(request: Request): Promise<Response> {
     return forwardToHA(request, url, v.body, haUrl, haToken);
   }
   if (decision.kind === 'sync') {
-    const upstream = await fetch(
-      `${haUrl.replace(/\/$/, '')}/api/services/input_button/press`,
-      {
-        method: 'POST',
-        headers: {
-          'content-type': 'application/json',
-          authorization: `Bearer ${haToken}`,
-        },
-        body: JSON.stringify({ entity_id: SYNC_ALL_BUTTON }),
-      },
-    );
-    return new Response(JSON.stringify({ ok: upstream.ok }), {
-      status: upstream.ok ? 200 : upstream.status,
-      headers: { 'content-type': 'application/json; charset=utf-8' },
-    });
+    return pressSyncAndAwaitSources(haUrl.replace(/\/$/, ''), haToken);
   }
   if (decision.kind === 'hf-search') {
     const target = `${HF_BASE}/search/suggest.json?q=${encodeURIComponent(decision.q)}&resources%5Btype%5D=product&resources%5Blimit%5D=${HF_SEARCH_LIMIT}`;
