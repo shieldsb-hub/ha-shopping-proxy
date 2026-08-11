@@ -3,3 +3,6 @@
 node_modules/
 .env
 .env.local
+
+# hub-and-spoke secrets symlink — family standard
+.ssh
