@@ -85,7 +85,8 @@ header h1 {
 /* Paprika sync: the app icon is square artwork; the border-radius turns
    it into a circular badge that fills the round header button. */
 .header-btn img { width: 26px; height: 26px; border-radius: 50%; display: block; }
-/* Unified sync button: inline cloud-download SVG, white to match the header. */
+/* Unified sync button: inline kitchen-sink SVG ("everything but the kitchen
+   sink", i.e. every source at once), white to match the header. */
 .header-btn svg { width: 22px; height: 22px; display: block; }
 .header-btn.active {
   background: white;
@@ -395,7 +396,7 @@ body.plan-order .order-footer { display: flex; }
   <header>
     <h1>Shopping</h1>
     <div class="header-actions">
-      <button class="header-btn" id="sync-btn" aria-label="Sync all sources" title="Sync all sources"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 13v8"/><path d="m8 17 4 4 4-4"/><path d="M4.393 15.269A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.436 8.284"/></svg></button>
+      <button class="header-btn" id="sync-btn" aria-label="Sync all sources" title="Sync all sources"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12h20"/><path d="M5 12v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6"/><path d="M11 12V6a3 3 0 0 1 6 0v1.5"/><path d="M5.5 9h3"/><path d="M7 9v3"/></svg></button>
       <button class="header-btn" id="plan-order-btn" aria-label="Plan order" title="Plan order">📋</button>
       <button class="header-btn" id="refresh-btn" aria-label="Refresh">⟳</button>
     </div>
