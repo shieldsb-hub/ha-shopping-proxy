@@ -6,3 +6,6 @@ node_modules/
 
 # hub-and-spoke secrets symlink — family standard
 .ssh
+
+# design working files (mockups), as in ha-controller
+design/
