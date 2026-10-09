@@ -19,6 +19,34 @@ const SinkIcon = () => (
   </svg>
 );
 
+const CartIcon = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <circle cx="9" cy="20" r="1.4" /><circle cx="18" cy="20" r="1.4" />
+    <path d="M2.5 3.5h2.6l2.4 11.2a1.6 1.6 0 0 0 1.6 1.3h8.4a1.6 1.6 0 0 0 1.6-1.2l1.6-6.8H6.2" />
+  </svg>
+);
+
+// A round header action with the Controller's in-flight treatment
+// (ha-controller direction-a.jsx PowerButton + BusyRing): while busy it is
+// lit in the accent at once, an arc sweeps its edge and a halo pings
+// outward. Shape motion, not opacity, because a fade reads as nothing at
+// a glance (family feedback on the Controller, 2026-07-19).
+function ActionButton({ busy, onClick, label, children }) {
+  return (
+    <button className={`iconbtn${busy ? ' busy' : ''}`} onClick={onClick} disabled={busy}
+      aria-label={label} title={label} aria-busy={busy || undefined}>
+      {busy && (
+        <>
+          <span className="halo" aria-hidden="true" />
+          <svg className="ring" aria-hidden="true" viewBox="0 0 100 100"><circle cx="50" cy="50" r="46" /></svg>
+          <svg className="ring arc" aria-hidden="true" viewBox="0 0 100 100"><circle cx="50" cy="50" r="46" /></svg>
+        </>
+      )}
+      {children}
+    </button>
+  );
+}
+
 function useToast() {
   const [toast, setToast] = useState(null);
   const timer = useRef(null);
@@ -67,6 +95,8 @@ export default function App() {
 
   // Order status: every 4 s while a build runs, otherwise every 30 s.
   const busy = status.running || starting;
+  // Words degrade to "still building" rather than staying cheerful forever.
+  const orderSlow = status.running && status.ageMin > 3;
   useEffect(() => {
     const t = setInterval(refreshStatus, busy ? 4000 : 30000);
     return () => clearInterval(t);
@@ -127,7 +157,7 @@ export default function App() {
       await startOrder();
       showToast('Building your Woolworths order. This takes a minute or two.', false, 4000);
       setTimeout(refreshStatus, 2500);
-      setTimeout(() => setStarting(false), 20000);
+      setTimeout(() => setStarting(false), 40000);   // generous: giving up early made people press again
     } catch (e) {
       console.error(e);
       setStarting(false);
@@ -141,7 +171,7 @@ export default function App() {
     <>
       {view === 'list' ? (
         <ListView
-          lists={lists} loaded={loaded} c={c} status={status} busy={busy}
+          lists={lists} loaded={loaded} c={c} status={status} busy={busy} orderSlow={orderSlow}
           checking={checking} syncBusy={syncBusy}
           onSync={onSync} onOrder={onOrder} onToggle={toggle}
           onOpen={(entityId, uid) => setSheet({ entityId, uid })}
@@ -179,19 +209,14 @@ export default function App() {
 
 // ─── list ───────────────────────────────────────────────────────────────
 
-function OrderCard({ c, status, busy, onOrder, onShowOrder }) {
-  const label = busy ? 'Building the Woolworths order · a minute or two'
+function OrderCard({ c, status, busy, onShowOrder }) {
+  const label = busy ? 'Building the Woolworths order'
     : status.placed ? `Order ${status.placed} placed${status.when ? ` · ${status.when}` : ''}`
     : status.when ? `Order built ${status.when}${status.subtotal ? ` · ${status.subtotal}` : ''}`
-    : 'Not ordered yet';
+    : 'Not ordered yet · tap the cart to build it';
   return (
     <div className="card ordercard">
-      <div className="row">
-        <span className="eyebrow">{label}</span>
-        <button className="pill solid" disabled={busy || c.open === 0} onClick={onOrder}>
-          {busy ? 'Ordering…' : status.when ? 'Update order' : 'Order'}
-        </button>
-      </div>
+      <span className="eyebrow">{label}</span>
       {busy && <div className="progress"><i /></div>}
       {!busy && status.problem && <div className="problem">{status.problem}</div>}
       <div className="stats" onClick={onShowOrder} role="button" aria-label="See the order">
@@ -234,7 +259,7 @@ function ItemRow({ entityId, item, checking, onToggle, onOpen }) {
   );
 }
 
-function ListView({ lists, loaded, c, status, busy, checking, syncBusy, onSync, onOrder, onToggle, onOpen, onShowOrder, onAdd }) {
+function ListView({ lists, loaded, c, status, busy, orderSlow, checking, syncBusy, onSync, onOrder, onToggle, onOpen, onShowOrder, onAdd }) {
   const [text, setText] = useState('');
   const ticked = CATEGORIES.flatMap(([eid]) => (lists[eid] || []).filter((i) => i.status === 'completed').map((i) => [eid, i]));
   async function submit(e) {
@@ -249,12 +274,15 @@ function ListView({ lists, loaded, c, status, busy, checking, syncBusy, onSync, 
       <div className="top">
         <h1>Shopping</h1>
         <div className="right">
-          <span className="count">{c.open} {c.open === 1 ? 'item' : 'items'}</span>
-          <button className={`iconbtn${syncBusy ? ' busy' : ''}`} onClick={onSync} disabled={syncBusy} aria-label="Sync lists from Alexa and Paprika" title="Sync lists from Alexa and Paprika"><SinkIcon /></button>
+          <span className={`count${busy || syncBusy ? ' doing' : ''}`}>
+            {busy ? (orderSlow ? 'Still ordering…' : 'Ordering…')
+              : syncBusy ? 'Syncing…'
+              : `${c.open} ${c.open === 1 ? 'item' : 'items'}`}
+          </span>
+          <ActionButton busy={busy} onClick={onOrder} label={status.when ? 'Update the Woolworths order' : 'Build the Woolworths order'}><CartIcon /></ActionButton>
+          <ActionButton busy={syncBusy} onClick={onSync} label="Sync lists from Alexa and Paprika"><SinkIcon /></ActionButton>
         </div>
       </div>
-
-      <OrderCard c={c} status={status} busy={busy} onOrder={onOrder} onShowOrder={onShowOrder} />
 
       {loaded && c.open === 0 && ticked.length === 0 && <div className="empty">Nothing on the list</div>}
 
@@ -279,6 +307,8 @@ function ListView({ lists, loaded, c, status, busy, checking, syncBusy, onSync, 
           </div>
         </section>
       )}
+
+      <OrderCard c={c} status={status} busy={busy} onShowOrder={onShowOrder} />
 
       <div className="trial"><a className="eyebrow" href="/classic/">Classic app</a></div>
 

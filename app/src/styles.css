@@ -45,19 +45,27 @@ button { font:inherit; color:inherit; }
 /* header */
 .top { padding:6px 2px 14px; display:flex; justify-content:space-between; align-items:flex-end; }
 .top h1 { font-size:40px; margin:0; line-height:1; }
-.top .right { display:flex; align-items:center; gap:12px; }
+.top .right { display:flex; align-items:center; gap:10px; }
 .count { font-size:20px; color:var(--mute); }
-.iconbtn { width:44px; height:44px; border-radius:50%; border:1px solid var(--hair-hi); background:var(--card); color:var(--ink); display:flex; align-items:center; justify-content:center; cursor:pointer; padding:0; }
-.iconbtn svg { width:21px; height:21px; }
-.iconbtn.busy svg { animation:spin .9s linear infinite; }
+.iconbtn { position:relative; width:44px; height:44px; border-radius:50%; border:1px solid var(--hair-hi); background:var(--card); color:var(--ink); display:flex; align-items:center; justify-content:center; cursor:pointer; padding:0; transition:background .2s, color .2s, border-color .2s; }
+.iconbtn > svg:not(.ring) { width:21px; height:21px; }
+/* In flight (Controller PowerButton/BusyRing): lit accent, sweeping arc, outward halo. */
+.iconbtn.busy { background:var(--accent-soft); color:var(--accent); border-color:var(--accent); cursor:default; }
+.iconbtn .halo { position:absolute; inset:-3px; border-radius:50%; border:2px solid var(--accent); pointer-events:none; animation:halo 1.6s ease-out infinite; }
+.iconbtn .ring { position:absolute; top:-3px; left:-3px; width:50px; height:50px; pointer-events:none; }
+.iconbtn .ring circle { fill:none; stroke:var(--accent); stroke-width:6; opacity:.22; }
+.iconbtn .ring.arc { animation:spin .9s linear infinite; }
+.iconbtn .ring.arc circle { opacity:1; stroke-linecap:round; stroke-dasharray:96 193; }
 @keyframes spin { to { transform:rotate(360deg); } }
+@keyframes halo { 0% { transform:scale(1); opacity:.55; } 75%, 100% { transform:scale(1.28); opacity:0; } }
+.count.doing { color:var(--accent); font-style:italic; font-size:18px; }
 
 /* order card */
-.ordercard { padding:14px 16px; margin-bottom:6px; display:flex; flex-direction:column; gap:12px; }
-.ordercard .row { display:flex; justify-content:space-between; align-items:center; gap:10px; }
-.stats { display:flex; gap:20px; cursor:pointer; }
-.stat .n { font-size:28px; line-height:1; }
-.stat .l { margin-top:4px; }
+/* Order summary: at the foot of the list, deliberately quiet. */
+.ordercard { padding:12px 14px; margin-top:26px; display:flex; flex-direction:column; gap:9px; background:var(--card-soft); }
+.stats { display:flex; gap:18px; cursor:pointer; }
+.stat .n { font-size:20px; line-height:1; }
+.stat .l { margin-top:3px; font-size:8.5px; }
 .stat.decide .n { color:var(--accent); }
 .progress { height:4px; border-radius:999px; background:var(--hair); overflow:hidden; }
 .progress i { display:block; height:100%; width:35%; background:var(--accent); border-radius:999px; animation:slide 1.6s ease-in-out infinite; }
