@@ -41,12 +41,25 @@ shopping.bkia.com.au  (Cloudflare DNS → Vercel)
 │         source, never collapsed             │
 │    GET  /api/harrisfarm/search?q=…          │   product search
 │    GET  /api/harrisfarm/product/<handle>    │   product details
+│    POST /api/order                          │   run the Woolworths
+│         (script fixed server-side)          │   cart build (satellite)
+│    GET  /api/order/status                   │   its status line only
 │                                             │
 │  Body validation: entity_id must match      │
 │  ^todo\.shopping_[a-z_]+$ — rejects calls   │
 │  that target non-shopping todo lists.       │
 └─────────────────────────────────────────────┘
 ```
+
+## Redesigned app on trial: /next/
+
+A React + Vite rebuild in the Controller's look (`app/`, approved mockup
+in the git-ignored `design/`) is served at `/next/` beside the current app
+at `/` until a cutover is agreed. Build with `cd app && npm install && npm
+run build`; the output in `public/next/` is committed so Vercel stays
+zero-config. `public/sw.js` leaves `/next/` to the network. Cutover: set
+`base: '/'` and `outDir: '../public'` in `app/vite.config.js`, decide what
+replaces the old `index.html` and `sw.js`, and bump the service worker.
 
 ## Required env vars
 
