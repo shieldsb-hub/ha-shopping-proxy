@@ -59,12 +59,14 @@ export function itemView(item) {
 }
 
 export function counts(lists) {
-  const c = { ww: 0, hf: 0, decide: 0, store: 0, none: 0, open: 0 };
+  const c = { ww: 0, hf: 0, hfToSend: 0, decide: 0, store: 0, none: 0, open: 0 };
   for (const items of Object.values(lists)) {
     for (const it of items) {
       if (it.status === 'completed') continue;
       c.open += 1;
-      c[itemView(it).dest] += 1;
+      const v = itemView(it);
+      c[v.dest] += 1;
+      if (v.dest === 'hf' && !v.hfOrdered) c.hfToSend += 1;
     }
   }
   return c;

@@ -201,7 +201,11 @@ function OrderCard({ c, status, busy, onOrder, onShowOrder }) {
         <div className="stat"><div className="n">{c.store}</div><div className="eyebrow l">In store</div></div>
       </div>
       <button className="seeorder" onClick={onShowOrder}>
-        See order{c.hf ? ` · Harris Farm basket (${c.hf})` : ''} ›
+        {/* Name the whole order; add a note only when something needs a person. */}
+        {['See order',
+          c.decide ? `${c.decide} to decide` : '',
+          c.hfToSend ? `Harris Farm cart not opened (${c.hfToSend})` : '',
+        ].filter(Boolean).join(' · ')} ›
       </button>
     </div>
   );
