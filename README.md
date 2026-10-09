@@ -24,9 +24,11 @@ shopping.bkia.com.au  (Cloudflare DNS → Vercel)
 ┌─────────────────────────────────────────────┐
 │  Vercel project: ha-shopping-proxy          │
 │                                             │
-│  /                  → public/index.html     │  (custom kiosk SPA,
-│  /icon.png|svg      → public/icon.{png,svg} │   ~1300 lines vanilla
-│  /manifest.json     → public/manifest.json  │   HTML/CSS/JS, PWA-ready)
+│  /                  → public/index.html     │  (React + Vite app,
+│  /assets/*          → public/assets/        │   built from app/;
+│  /classic/          → previous vanilla app  │   PWA via sw.js)
+│  /icon.png|svg      → public/icon.{png,svg} │
+│  /manifest.json     → public/manifest.json  │
 │  /api/*             → api/proxy.ts          │
 │                                             │
 │  api/proxy.ts allowlist:                    │
@@ -51,15 +53,17 @@ shopping.bkia.com.au  (Cloudflare DNS → Vercel)
 └─────────────────────────────────────────────┘
 ```
 
-## Redesigned app on trial: /next/
+## The app (React + Vite, since 2026-10-10)
 
-A React + Vite rebuild in the Controller's look (`app/`, approved mockup
-in the git-ignored `design/`) is served at `/next/` beside the current app
-at `/` until a cutover is agreed. Build with `cd app && npm install && npm
-run build`; the output in `public/next/` is committed so Vercel stays
-zero-config. `public/sw.js` leaves `/next/` to the network. Cutover: set
-`base: '/'` and `outDir: '../public'` in `app/vite.config.js`, decide what
-replaces the old `index.html` and `sw.js`, and bump the service worker.
+The family app at `/` is a React + Vite build in the Controller's Atelier
+look (`app/`; approved mockups in the git-ignored `design/`). Build with
+`cd app && npm install && npm run build`: Vite builds into `app/dist/`
+(ignored) and the script copies `index.html` and `assets/` into `public/`,
+which is committed so Vercel stays zero-config. `public/sw.js` gives the
+offline fallback; hashed `/assets/*` are cached on first fetch.
+
+The previous vanilla app is kept at `/classic/` as a fallback; the service
+worker leaves it to the network. `/next/` (the trial path) redirects to `/`.
 
 ## Required env vars
 

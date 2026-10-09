@@ -1,4 +1,5 @@
-// Service worker for the Wallace St shopping kiosk PWA.
+// Service worker for the Wallace St shopping kiosk PWA (the React app in
+// app/ since 2026-10-10; hashed /assets/* are cached on first fetch).
 //
 // Wall iPad uses this daily; brief WiFi blips (router reboots, firmware
 // updates) shouldn't blank the screen mid-shop. Without a SW, any drop
@@ -19,7 +20,7 @@
 // fallback. Bumping ensures stale caches from old SW logic are nuked
 // in the activate handler.
 
-const VERSION = '2026-10-10.1';
+const VERSION = '2026-10-10.2';
 const CACHE_NAME = `ha-shopping-${VERSION}`;
 
 const PRECACHE_URLS = [
@@ -66,10 +67,10 @@ self.addEventListener('fetch', (event) => {
   // a cached 200 for a todo add/remove would silently mask a real failure.
   if (url.pathname.startsWith('/api/')) return;
 
-  // /next/ — the redesigned app on trial alongside this one. Leave it to
-  // the network: otherwise its navigations would be cached as '/', the
-  // offline fallback for THIS app.
-  if (url.pathname.startsWith('/next/')) return;
+  // /classic/ — the previous app, kept as a fallback after the 2026-10-10
+  // cutover. Leave it to the network: otherwise its navigations would be
+  // cached as '/', the offline fallback for the current app.
+  if (url.pathname.startsWith('/classic/')) return;
 
   if (request.mode === 'navigate') {
     event.respondWith((async () => {

@@ -273,7 +273,7 @@ function ListView({ lists, loaded, c, status, busy, checking, syncBusy, onSync, 
         </section>
       )}
 
-      <div className="trial"><a className="eyebrow" href="/">Back to the current app</a></div>
+      <div className="trial"><a className="eyebrow" href="/classic/">Classic app</a></div>
 
       <form className="addbar" onSubmit={submit}>
         <input value={text} onChange={(e) => setText(e.target.value)} placeholder="Add an item…" enterKeyHint="done" autoCapitalize="sentences" />

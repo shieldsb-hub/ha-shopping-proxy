@@ -1,12 +1,12 @@
 {
   "name": "ha-shopping-app",
   "private": true,
-  "version": "0.2.0",
-  "description": "Redesigned family shopping app (React + Vite). Builds into ../public/next/ for a side-by-side trial at /next/.",
+  "version": "1.0.0",
+  "description": "Redesigned family shopping app (React + Vite). Builds into ../public/ (index.html + assets/).",
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build"
+    "build": "vite build && rm -rf ../public/assets && cp -r dist/assets ../public/assets && cp dist/index.html ../public/index.html"
   },
   "dependencies": {
     "react": "^18.3.1",

@@ -10,6 +10,7 @@
   <title>Shopping</title>
   <link rel="icon" href="/icon.svg">
   <link rel="apple-touch-icon" href="/icon.png">
+  <link rel="manifest" href="/manifest.json">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;1,400&family=Inter+Tight:wght@400;500;600&display=swap" rel="stylesheet">
@@ -17,5 +18,12 @@
 <body>
   <div id="root"></div>
   <script type="module" src="/src/main.jsx"></script>
+  <script>
+    // Offline fallback so a WiFi blip doesn't blank the wall iPad mid-shop.
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js', { updateViaCache: 'none' })
+        .catch((err) => console.warn('[sw] registration failed:', err));
+    }
+  </script>
 </body>
 </html>
