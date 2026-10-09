@@ -63,6 +63,7 @@ button { font:inherit; color:inherit; }
 .progress i { display:block; height:100%; width:35%; background:var(--accent); border-radius:999px; animation:slide 1.6s ease-in-out infinite; }
 @keyframes slide { 0% { transform:translateX(-100%); } 100% { transform:translateX(290%); } }
 .problem { font-size:13px; color:var(--accent); }
+.seeorder { align-self:flex-start; background:none; border:none; padding:2px 0; cursor:pointer; font:600 11px var(--sans); letter-spacing:.14em; text-transform:uppercase; color:var(--ink); border-bottom:1px solid var(--hair-hi); }
 
 /* aisles + items */
 .aisle { margin:22px 4px 8px; display:flex; justify-content:space-between; }

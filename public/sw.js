@@ -20,7 +20,7 @@
 // fallback. Bumping ensures stale caches from old SW logic are nuked
 // in the activate handler.
 
-const VERSION = '2026-10-10.2';
+const VERSION = '2026-10-10.3';
 const CACHE_NAME = `ha-shopping-${VERSION}`;
 
 const PRECACHE_URLS = [
@@ -31,13 +31,31 @@ const PRECACHE_URLS = [
   '/icon.svg',
 ];
 
+// The React build's code lives in hashed /assets/* files whose names change
+// every deploy, so they can't be listed above. Read them out of the page
+// itself and cache them alongside it; otherwise the first visit (made before
+// this worker controls the page) leaves the offline fallback a blank shell.
+async function cacheAssetsOf(cache, html) {
+  const urls = [...new Set(html.match(/\/assets\/[A-Za-z0-9._-]+\.(?:js|css)/g) || [])];
+  await Promise.all(urls.map(async (u) => {
+    if (await cache.match(u)) return;
+    try {
+      const r = await fetch(u);
+      if (r.ok) await cache.put(u, r);
+    } catch { /* best effort */ }
+  }));
+}
+
 self.addEventListener('install', (event) => {
   event.waitUntil((async () => {
     const cache = await caches.open(CACHE_NAME);
     await Promise.all(PRECACHE_URLS.map(async (url) => {
       try {
         const resp = await fetch(url, { cache: 'reload' });
-        if (resp.ok) await cache.put(url, resp);
+        if (resp.ok) {
+          if (url === '/') await cacheAssetsOf(cache, await resp.clone().text());
+          await cache.put(url, resp);
+        }
       } catch { /* best effort */ }
     }));
     await self.skipWaiting();
@@ -79,6 +97,8 @@ self.addEventListener('fetch', (event) => {
         if (fresh.ok) {
           const cache = await caches.open(CACHE_NAME);
           cache.put('/', fresh.clone());
+          // A new deploy brings new asset names: cache them now, while online.
+          fresh.clone().text().then((html) => cacheAssetsOf(cache, html));
         }
         return fresh;
       } catch {

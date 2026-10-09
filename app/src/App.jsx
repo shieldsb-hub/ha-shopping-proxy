@@ -200,6 +200,9 @@ function OrderCard({ c, status, busy, onOrder, onShowOrder }) {
         <div className={`stat${c.decide ? ' decide' : ''}`}><div className="n">{c.decide}</div><div className="eyebrow l">To decide</div></div>
         <div className="stat"><div className="n">{c.store}</div><div className="eyebrow l">In store</div></div>
       </div>
+      <button className="seeorder" onClick={onShowOrder}>
+        See order{c.hf ? ` · Harris Farm basket (${c.hf})` : ''} ›
+      </button>
     </div>
   );
 }
