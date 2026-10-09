@@ -32,6 +32,13 @@
 //        {ok:true}, so the change is backwards-compatible.
 //   GET  /api/harrisfarm/search?q=<term>             — HF product search
 //   GET  /api/harrisfarm/product/<handle>            — HF product details
+//   POST /api/order                                   — run HA's
+//        script.woolworths_sync_cart (fixed server-side; body ignored),
+//        which builds the Woolworths online cart from the list on the
+//        satellite. Returns at once; the build takes one to a few minutes.
+//   GET  /api/order/status                            — the order build's
+//        status line (input_text.woolworths_cart_status, read server-side),
+//        returned as {state, last_updated}. No other HA state is readable.
 //
 // HA service-call body validation: JSON object whose `entity_id` (root
 // key) is a string matching ^todo\.shopping_[a-z_]+$. Arrays and the
@@ -93,6 +100,13 @@ const SYNC_SOURCES = [
 // Typical run is 1.5-4 s (shell_command → external API → todo adds). The
 // deadline is a ceiling, not an expectation: we return as soon as every
 // source has reported.
+// Order: the one script /api/order may run, and the one helper
+// /api/order/status may read. Fixed here so the public client can name
+// neither. A second press while a build runs is harmless: the script is
+// mode:single and the satellite answers 409.
+const ORDER_SCRIPT = 'script/woolworths_sync_cart';
+const ORDER_STATUS_ENTITY = 'input_text.woolworths_cart_status';
+
 const SYNC_POLL_MS = 350;
 const SYNC_DEADLINE_MS = 9000;
 
@@ -100,6 +114,8 @@ type Decision =
   | { kind: 'ha-state' }
   | { kind: 'ha-service' }
   | { kind: 'sync' }
+  | { kind: 'order' }
+  | { kind: 'order-status' }
   | { kind: 'hf-search'; q: string }
   | { kind: 'hf-product'; handle: string }
   | null;
@@ -117,6 +133,12 @@ function classifyRequest(request: Request, url: URL): Decision {
   if (method === 'POST' && (pathname === '/api/sync' ||
                             pathname === '/api/paprika/sync')) {
     return { kind: 'sync' };
+  }
+  if (method === 'POST' && pathname === '/api/order') {
+    return { kind: 'order' };
+  }
+  if (method === 'GET' && pathname === '/api/order/status') {
+    return { kind: 'order-status' };
   }
   if (method === 'GET' && pathname === '/api/harrisfarm/search') {
     const q = (url.searchParams.get('q') || '').trim();
@@ -315,6 +337,25 @@ export default async function handler(request: Request): Promise<Response> {
   }
   if (decision.kind === 'sync') {
     return pressSyncAndAwaitSources(haUrl.replace(/\/$/, ''), haToken);
+  }
+  if (decision.kind === 'order') {
+    const r = await fetch(`${haUrl.replace(/\/$/, '')}/api/services/${ORDER_SCRIPT}`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', authorization: `Bearer ${haToken}` },
+      body: '{}',
+    });
+    return new Response(JSON.stringify({ ok: r.ok }), {
+      status: r.ok ? 200 : 502,
+      headers: { 'content-type': 'application/json; charset=utf-8' },
+    });
+  }
+  if (decision.kind === 'order-status') {
+    const reading = await readSyncSource(haUrl.replace(/\/$/, ''), haToken, ORDER_STATUS_ENTITY);
+    return new Response(JSON.stringify(reading
+      ? { state: reading.state, last_updated: reading.lastUpdated }
+      : { state: '', last_updated: '' }), {
+      headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' },
+    });
   }
   if (decision.kind === 'hf-search') {
     const target = `${HF_BASE}/search/suggest.json?q=${encodeURIComponent(decision.q)}&resources%5Btype%5D=product&resources%5Blimit%5D=${HF_SEARCH_LIMIT}`;

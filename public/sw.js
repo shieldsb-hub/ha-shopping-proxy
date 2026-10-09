@@ -19,7 +19,7 @@
 // fallback. Bumping ensures stale caches from old SW logic are nuked
 // in the activate handler.
 
-const VERSION = '2026-07-26.1';
+const VERSION = '2026-10-10.1';
 const CACHE_NAME = `ha-shopping-${VERSION}`;
 
 const PRECACHE_URLS = [
@@ -65,6 +65,11 @@ self.addEventListener('fetch', (event) => {
   // /api/* — never cache. Live list state must always be authoritative;
   // a cached 200 for a todo add/remove would silently mask a real failure.
   if (url.pathname.startsWith('/api/')) return;
+
+  // /next/ — the redesigned app on trial alongside this one. Leave it to
+  // the network: otherwise its navigations would be cached as '/', the
+  // offline fallback for THIS app.
+  if (url.pathname.startsWith('/next/')) return;
 
   if (request.mode === 'navigate') {
     event.respondWith((async () => {
