@@ -55,8 +55,13 @@ shopping.bkia.com.au  (Cloudflare DNS → Vercel)
 
 ## The app (React + Vite, since 2026-10-10)
 
-The family app at `/` is a React + Vite build in the Controller's Atelier
-look (`app/`; approved mockups in the git-ignored `design/`). Build with
+The family app at `/` is a React + Vite build (`app/`) in the Controller's
+house palette since 2026-10-22: every colour is a role-named token in
+`app/src/styles.css`, copied from `ha-controller/panel/src/theme.js`, and
+follows its rules (no outlines, rust only for "to decide", serif only at
+24px or more). `npm run dev` then `/dev/harness.html` runs the app on
+canned HA responses for screenshots (`?busy=1`, `?sheet=N&pick=N`,
+`?order=1`, `?empty=1`); it is not part of the build. Build with
 `cd app && npm install && npm run build`: Vite builds into `app/dist/`
 (ignored) and the script copies `index.html` and `assets/` into `public/`,
 which is committed so Vercel stays zero-config. `public/sw.js` gives the

@@ -12,6 +12,7 @@
 
 ## Done
 
+- [x] 2026-10-22 The app restyled in the Controller's house palette (2026-10-21 redesign): plaster page, shadowed cards with no outlines, store tags as words with only Decide in rust, busy in joinery black, the chosen option filled black, nothing under 12px; dark mode on the Controller's night ramp; theme-color and manifest moved to plaster, sw.js VERSION 2026-10-22.1. Before/after: https://claude.ai/artifact/5moCXvTZkPQ2MVnq5GNzx3. Not yet seen by the family on their phones.
 - [x] 2026-10-10 First-day family feedback (455c475): the order summary moved to the foot of the list in smaller type; a cart button beside the kitchen sink replaces the "Update order" pill; both header actions use the Controller's in-flight treatment (lit accent, sweeping arc, halo, "Ordering…"/"Syncing…" words) with a 40 s intent window.
 - [x] 2026-10-10 'See order' link wording (9e4afb1): reads 'See order' for the whole order, appending '· n to decide' or '· Harris Farm cart not opened (n)' only when the Order screen holds something a person still has to do (new `hfToSend` count in model.js), instead of 'Harris Farm basket (n)' that counted already-sent items.
 - [x] 2026-10-10 Visible 'See order' link on the order card (the Order screen was reachable only by tapping the counts), and sw.js now caches the hashed /assets/* files read out of the page on install and on every online navigation, since the post-cutover offline test rendered a blank shell (VERSION 2026-10-10.3) (69019d2).
