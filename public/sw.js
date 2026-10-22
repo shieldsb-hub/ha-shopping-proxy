@@ -20,7 +20,7 @@
 // fallback. Bumping ensures stale caches from old SW logic are nuked
 // in the activate handler.
 
-const VERSION = '2026-10-10.3';
+const VERSION = '2026-10-22.1';
 const CACHE_NAME = `ha-shopping-${VERSION}`;
 
 const PRECACHE_URLS = [

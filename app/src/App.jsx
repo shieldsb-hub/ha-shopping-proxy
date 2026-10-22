@@ -27,8 +27,8 @@ const CartIcon = () => (
 );
 
 // A round header action with the Controller's in-flight treatment
-// (ha-controller direction-a.jsx PowerButton + BusyRing): while busy it is
-// lit in the accent at once, an arc sweeps its edge and a halo pings
+// (ha-controller direction-a.jsx PowerButton + BusyRing): while busy it
+// takes the busy fill at once, an arc sweeps its edge and a halo pings
 // outward. Shape motion, not opacity, because a fade reads as nothing at
 // a glance (family feedback on the Controller, 2026-07-19).
 function ActionButton({ busy, onClick, label, children }) {
@@ -540,7 +540,7 @@ function OrderView({ lists, status, busy, onOrder, onBack, refresh, showToast, o
           <button className="pill" onClick={onOrder} disabled={busy}>{busy ? 'Ordering…' : status.when ? 'Update order' : 'Build order'}</button>
           <a className="pill solid" href={WOOLWORTHS_CART} target="_blank" rel="noreferrer">Check out in Woolworths</a>
         </div>
-        {status.problem && <div className="note" style={{ color: 'var(--accent)' }}>{status.problem}</div>}
+        {status.problem && <div className="note problem">{status.problem}</div>}
         <div className="note">Ticked off here automatically once the order is placed.</div>
       </div>
 

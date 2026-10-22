@@ -19,7 +19,7 @@ export function parseDesc(desc) {
 
 export const writeDesc = (d) => JSON.stringify(d);
 
-// dest: ww | hf | decide | store | none   (amber is reserved for decide)
+// dest: ww | hf | decide | store | none   (rust, the attention colour, is reserved for decide)
 export function itemView(item) {
   const d = parseDesc(item.description);
   const ww = d.ww && typeof d.ww === 'object' ? d.ww : {};
