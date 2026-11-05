@@ -10,6 +10,7 @@
 - [ ] p3 ~15m **Slow the list polling.** `app/src/App.jsx` `POLL_MS = 3000` refreshes all 8 shopping lists while the app is visible: 64k `todo.get_items` calls on the Green in the 14 days to 1 November, nearly all 12:00 to 17:00, the largest service caller on the instance. 15 to 30 s would cut it 5 to 10 times; the cost is a slower view of an item added on another device. Family-facing, so ship and let it be used for a few days. Found in the ha-platform footprint audit 2026-11-02
 - [ ] p3 ~15m Retire /classic/ (the pre-2026-10-10 app) once the household has gone a few order days without needing it
 - [ ] p3 ~1h Order progress on the order card: the engine reports per-item progress while a build runs (mockup screen 3); today the card shows an indeterminate bar
+- [ ] p3 ~5m The kitchen-sink button's label in `app/src/App.jsx` still reads "Sync lists from Alexa and Paprika" (and the SinkIcon comment above it); Cookidoo joined the sync on 2026-11-05 (ha-shopping M9). Fix with the next app rebuild, since `public/assets/` holds the built bundle and a label alone is not worth a new cached bundle
 
 ## Done
 
