@@ -24,7 +24,7 @@
 //   POST /api/sync                                    — press the unified
 //        "sync all sources" input_button in HA (entity fixed server-side;
 //        client body ignored). Fans out to every source (Paprika, Alexa,
-//        future) HA-side. /api/paprika/sync is a legacy alias for the same
+//        Cookidoo, future) HA-side. /api/paprika/sync is a legacy alias for the same
 //        press, kept for cached PWA clients from before the rename.
 //        BLOCKS until each source reports what its run did, up to ~9 s,
 //        returning {ok, pending, sources:[{key,label,result,reported}]}.
@@ -65,8 +65,8 @@ const HF_SEARCH_LIMIT = 10;
 
 // The HA input_button pressed by /api/sync. Hard-coded on the server so the
 // public client can never press any other button. This one button fans out
-// to every source (Paprika, Alexa, future) HA-side, so new sources never
-// touch this public surface.
+// to every source (Paprika, Alexa, Cookidoo, future) HA-side, so new sources
+// never touch this public surface.
 const SYNC_ALL_BUTTON = 'input_button.shopping_sync_all';
 
 // Where each source reports what its last run actually did. /api/sync
@@ -89,12 +89,14 @@ const SYNC_ALL_BUTTON = 'input_button.shopping_sync_all';
 //
 // NOTE: these are read server-side with the gateway's own token. No new
 // client-readable route is opened — HA_STATE_PATH_RE still admits only
-// todo.shopping_*, and the client sees just the two result strings.
+// todo.shopping_*, and the client sees just the per-source result strings.
 const SYNC_SOURCES = [
   { key: 'paprika', label: 'Paprika',
     entity: 'input_text.paprika_sync_result' },
   { key: 'alexa', label: 'Alexa',
     entity: 'input_text.alexa_list_sync_result' },
+  { key: 'cookidoo', label: 'Cookidoo',
+    entity: 'input_text.cookidoo_sync_result' },
 ];
 
 // Typical run is 1.5-4 s (shell_command → external API → todo adds). The
